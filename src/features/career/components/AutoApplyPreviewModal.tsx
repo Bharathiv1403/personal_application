@@ -101,8 +101,8 @@ export const AutoApplyPreviewModal: React.FC<Props> = ({
               <Text style={styles.jobCompanyText}>{job.companyName} • {job.location}</Text>
             </View>
             <Badge
-              label={`${job.matchScore || 85}% ATS Match`}
-              variant={(job.matchScore || 85) >= 80 ? 'primary' : 'gold'}
+              label={`${job.matchScore ?? 85}% ATS Match`}
+              variant={(job.matchScore ?? 85) >= 80 ? 'primary' : 'gold'}
             />
           </View>
 

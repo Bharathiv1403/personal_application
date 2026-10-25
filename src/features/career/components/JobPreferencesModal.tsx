@@ -35,6 +35,18 @@ export const JobPreferencesModal: React.FC<Props> = ({ visible, onClose }) => {
   const [locations, setLocations] = useState(preferences.preferredLocations.join(', '));
   const [workModes, setWorkModes] = useState<string[]>(preferences.workModes);
 
+  React.useEffect(() => {
+    if (visible) {
+      setMinSalary(String(preferences.minimumSalaryLPA || 18));
+      setMaxSalary(String(preferences.maximumSalaryLPA || 32));
+      setThreshold(preferences.skillsMatchThreshold || 75);
+      setAutoApply(preferences.autoApplyEnabled);
+      setDailyLimit(String(preferences.dailyApplicationLimit || 15));
+      setLocations(preferences.preferredLocations.join(', '));
+      setWorkModes(preferences.workModes);
+    }
+  }, [visible, preferences]);
+
   const toggleWorkMode = (mode: 'Remote' | 'Hybrid' | 'On-site') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     if (workModes.includes(mode)) {

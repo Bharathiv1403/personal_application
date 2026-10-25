@@ -33,6 +33,13 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
   const addBudget = useWealthStore((s) => s.addBudget);
   const addGoal = useWealthStore((s) => s.addGoal);
 
+  React.useEffect(() => {
+    if (visible) {
+      setName('');
+      setAmount('');
+    }
+  }, [visible]);
+
   const handleSave = () => {
     const numAmount = parseFloat(amount.trim());
     if (isNaN(numAmount) || numAmount <= 0) {
@@ -141,7 +148,7 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
 
             {/* Amount */}
             <Text style={styles.fieldLabel}>
-              {mode === 'budget' ? 'Monthly Limit (₹) *' : 'Target Target Savings Amount (₹) *'}
+              {mode === 'budget' ? 'Monthly Limit (₹) *' : 'Target Savings Amount (₹) *'}
             </Text>
             <TextInput
               style={styles.textInput}
