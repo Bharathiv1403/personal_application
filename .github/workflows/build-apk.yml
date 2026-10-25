@@ -48,6 +48,9 @@ jobs:
         env:
           EXPO_PUBLIC_APP_ENV: production
           EXPO_PUBLIC_GEMINI_API_KEY: ${{ secrets.EXPO_PUBLIC_GEMINI_API_KEY }}
+          EXPO_PUBLIC_GROQ_API_KEY: ${{ secrets.EXPO_PUBLIC_GROQ_API_KEY }}
+          EXPO_PUBLIC_HUGGINGFACE_API_KEY: ${{ secrets.EXPO_PUBLIC_HUGGINGFACE_API_KEY }}
+          EXPO_PUBLIC_OLLAMA_URL: ${{ secrets.EXPO_PUBLIC_OLLAMA_URL }}
           EXPO_PUBLIC_WEATHER_API_KEY: ${{ secrets.EXPO_PUBLIC_WEATHER_API_KEY }}
           EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_CLIENT_ID }}
         run: npx expo prebuild --platform android --clean
@@ -56,6 +59,9 @@ jobs:
         env:
           EXPO_PUBLIC_APP_ENV: production
           EXPO_PUBLIC_GEMINI_API_KEY: ${{ secrets.EXPO_PUBLIC_GEMINI_API_KEY }}
+          EXPO_PUBLIC_GROQ_API_KEY: ${{ secrets.EXPO_PUBLIC_GROQ_API_KEY }}
+          EXPO_PUBLIC_HUGGINGFACE_API_KEY: ${{ secrets.EXPO_PUBLIC_HUGGINGFACE_API_KEY }}
+          EXPO_PUBLIC_OLLAMA_URL: ${{ secrets.EXPO_PUBLIC_OLLAMA_URL }}
           EXPO_PUBLIC_WEATHER_API_KEY: ${{ secrets.EXPO_PUBLIC_WEATHER_API_KEY }}
           EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_CLIENT_ID }}
         run: |

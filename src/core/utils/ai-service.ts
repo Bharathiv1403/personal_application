@@ -6,17 +6,281 @@ export interface ChatMessage {
   text: string;
 }
 
-export class AIService {
-  private static apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
+export type AIProvider = 'gemini' | 'groq' | 'ollama' | 'huggingface' | 'fallback';
 
+interface QueryOptions {
+  systemPrompt?: string;
+  userPrompt: string;
+  history?: ChatMessage[];
+  maxTokens?: number;
+}
+
+export class AIService {
+  // Configuration keys
+  private static geminiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
+  private static groqKey = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
+  private static hfKey = process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY || '';
+  private static ollamaUrl = process.env.EXPO_PUBLIC_OLLAMA_URL || '';
+  private static ollamaModel = process.env.EXPO_PUBLIC_OLLAMA_MODEL || 'llama3.2';
+
+  /**
+   * Returns list of configured and available providers
+   */
+  static getConfiguredProviders(): AIProvider[] {
+    const list: AIProvider[] = [];
+    if (this.isValidKey(this.geminiKey)) list.push('gemini');
+    if (this.isValidKey(this.groqKey)) list.push('groq');
+    if (this.ollamaUrl && this.ollamaUrl.startsWith('http')) list.push('ollama');
+    if (this.isValidKey(this.hfKey)) list.push('huggingface');
+    return list;
+  }
+
+  private static isValidKey(key?: string): boolean {
+    return Boolean(key && key.trim().length > 5 && !key.includes('your_') && !key.includes('here'));
+  }
+
+  /**
+   * Unified multi-provider runner with automatic failover (Gemini -> Groq -> Ollama -> HuggingFace)
+   */
+  private static async queryLLM(options: QueryOptions): Promise<string | null> {
+    const providers = this.getConfiguredProviders();
+
+    for (const provider of providers) {
+      try {
+        let result: string | null = null;
+        switch (provider) {
+          case 'gemini':
+            result = await this.callGemini(options);
+            break;
+          case 'groq':
+            result = await this.callGroq(options);
+            break;
+          case 'ollama':
+            result = await this.callOllama(options);
+            break;
+          case 'huggingface':
+            result = await this.callHuggingFace(options);
+            break;
+        }
+
+        if (result && result.trim().length > 0) {
+          return result.trim();
+        }
+      } catch (err) {
+        console.warn(`[AIService] ${provider} call failed, trying next provider:`, err);
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Provider 1: Google Gemini (Gemini 2.0 Flash / 1.5 Flash)
+   */
+  private static async callGemini(options: QueryOptions): Promise<string | null> {
+    const key = this.geminiKey;
+    const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+
+    const contents: any[] = [];
+    
+    // Add history
+    if (options.history && options.history.length > 0) {
+      for (const msg of options.history.slice(-4)) {
+        contents.push({
+          role: msg.sender === 'agent' ? 'model' : 'user',
+          parts: [{ text: msg.text }],
+        });
+      }
+    }
+
+    // Add current user prompt
+    contents.push({
+      role: 'user',
+      parts: [{ text: options.userPrompt }],
+    });
+
+    const bodyPayload: any = { contents };
+    if (options.systemPrompt) {
+      bodyPayload.systemInstruction = {
+        parts: [{ text: options.systemPrompt }],
+      };
+    }
+
+    for (const model of models) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyPayload),
+          }
+        );
+
+        if (!response.ok) continue;
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text;
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Provider 2: Groq Cloud (Ultra-Fast Llama 3.3 70B & 3.1 8B)
+   */
+  private static async callGroq(options: QueryOptions): Promise<string | null> {
+    const key = this.groqKey;
+    const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
+    if (options.systemPrompt) {
+      messages.push({ role: 'system', content: options.systemPrompt });
+    }
+
+    if (options.history) {
+      for (const msg of options.history.slice(-4)) {
+        messages.push({
+          role: msg.sender === 'agent' ? 'assistant' : 'user',
+          content: msg.text,
+        });
+      }
+    }
+
+    messages.push({ role: 'user', content: options.userPrompt });
+
+    for (const model of models) {
+      try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${key}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            max_tokens: options.maxTokens || 1024,
+            temperature: 0.7,
+          }),
+        });
+
+        if (!response.ok) continue;
+        const data = await response.json();
+        const text = data.choices?.[0]?.message?.content;
+        if (text) return text;
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Provider 3: Ollama (Local PC or Remote Tunnel)
+   */
+  private static async callOllama(options: QueryOptions): Promise<string | null> {
+    const baseUrl = this.ollamaUrl.replace(/\/$/, '');
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
+
+    if (options.systemPrompt) {
+      messages.push({ role: 'system', content: options.systemPrompt });
+    }
+
+    if (options.history) {
+      for (const msg of options.history.slice(-4)) {
+        messages.push({
+          role: msg.sender === 'agent' ? 'assistant' : 'user',
+          content: msg.text,
+        });
+      }
+    }
+
+    messages.push({ role: 'user', content: options.userPrompt });
+
+    try {
+      const response = await fetch(`${baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: this.ollamaModel,
+          messages,
+          stream: false,
+        }),
+      });
+
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.message?.content || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Provider 4: Hugging Face Serverless Inference
+   */
+  private static async callHuggingFace(options: QueryOptions): Promise<string | null> {
+    const key = this.hfKey;
+    const model = 'meta-llama/Llama-3.2-3B-Instruct';
+
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
+    if (options.systemPrompt) {
+      messages.push({ role: 'system', content: options.systemPrompt });
+    }
+
+    if (options.history) {
+      for (const msg of options.history.slice(-4)) {
+        messages.push({
+          role: msg.sender === 'agent' ? 'assistant' : 'user',
+          content: msg.text,
+        });
+      }
+    }
+
+    messages.push({ role: 'user', content: options.userPrompt });
+
+    try {
+      const response = await fetch('https://router.huggingface.co/hf-inference/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          max_tokens: options.maxTokens || 800,
+        }),
+      });
+
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || null;
+    } catch {
+      return null;
+    }
+  }
+
+  // -------------------------------------------------------------
+  // Public App Features (with Fallbacks)
+  // -------------------------------------------------------------
+
+  /**
+   * 1. Interactive Life OS Agent Chat
+   */
   static async generateReply(
     userMessage: string,
     history: ChatMessage[] = [],
     context?: { steps?: number; pendingLoansCount?: number; upcomingInterviewsCount?: number }
   ): Promise<string> {
-    const key = this.apiKey;
-    if (!key || key.includes('your_gemini_api_key_here')) {
-      return "⚠️ Gemini API Key not configured. Please add your EXPO_PUBLIC_GEMINI_API_KEY in the .env file.";
+    const configured = this.getConfiguredProviders();
+    if (configured.length === 0) {
+      return "⚠️ No Free AI Key configured.\n\nAdd your free Gemini API key (aistudio.google.com) or Groq key (console.groq.com) in .env to activate the AI Assistant.";
     }
 
     const systemPrompt = `You are AAYON, an intelligent executive personal assistant and life mentor inside a personal Life OS mobile app.
@@ -27,46 +291,20 @@ Current context:
 - Upcoming interviews: ${context?.upcomingInterviewsCount ?? 0}
 Give concise, helpful, empowering answers tailored for mobile reading (use bullet points and emojis when relevant). Keep replies within 2-4 sentences unless detailed analysis is requested.`;
 
-    const contents = [
-      {
-        role: 'user',
-        parts: [{ text: `${systemPrompt}\n\nConversation history:\n${history.slice(-4).map(h => `${h.sender}: ${h.text}`).join('\n')}\n\nUser: ${userMessage}` }]
-      }
-    ];
+    const reply = await this.queryLLM({
+      systemPrompt,
+      userPrompt: userMessage,
+      history,
+    });
 
-    const modelsToTry = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
+    if (reply) return reply;
 
-    for (const model of modelsToTry) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ contents }),
-          }
-        );
-
-        if (!response.ok) {
-          continue;
-        }
-
-        const data = await response.json();
-        const candidate = data.candidates?.[0];
-        const text = candidate?.content?.parts?.[0]?.text;
-        if (text && text.trim().length > 0) {
-          return text.trim();
-        }
-      } catch (err) {
-        console.warn(`[AI Service] Network error with ${model}:`, err);
-      }
-    }
-
-    return "I'm having trouble connecting to the AI service right now. Please check your network connection and try again.";
+    return "I'm having trouble connecting to the configured AI services right now. Please verify your internet connection or API keys.";
   }
 
+  /**
+   * 2. Morning Executive Daily Briefing
+   */
   static async generateDailyBriefing(context: {
     steps: number;
     stepGoal: number;
@@ -76,13 +314,15 @@ Give concise, helpful, empowering answers tailored for mobile reading (use bulle
     nearestDueDate?: number;
     upcomingJob?: string;
   }): Promise<string> {
-    const key = this.apiKey;
-    if (!key || key.includes('your_gemini_api_key_here')) {
-      return `Welcome back! You're at ${context.steps} steps (${Math.round((context.steps / context.stepGoal) * 100)}% of goal). Stay hydrated and focus on today's priorities!`;
+    const fallbackText = `Welcome back! You're at ${context.steps.toLocaleString()} steps (${Math.round(
+      (context.steps / context.stepGoal) * 100
+    )}% of goal). Stay hydrated with ${context.waterMl}ml and conquer your top priorities today!`;
+
+    if (this.getConfiguredProviders().length === 0) {
+      return fallbackText;
     }
 
-    try {
-      const prompt = `Generate a single short energetic morning executive summary (max 2 sentences) for Bharathi.
+    const prompt = `Generate a single short energetic morning executive summary (max 2 sentences) for Bharathi.
 Metrics:
 - Steps: ${context.steps} / ${context.stepGoal}
 - Water: ${context.waterMl}ml / ${context.waterGoal}ml
@@ -90,34 +330,18 @@ Metrics:
 - Nearest due day: ${context.nearestDueDate ?? 'None'}
 - Top career goal: ${context.upcomingJob || 'None'}`;
 
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${key}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-          }),
-        }
-      );
+    const reply = await this.queryLLM({
+      userPrompt: prompt,
+      maxTokens: 150,
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return text.trim();
-      }
-    } catch {
-      // Fallback
-    }
-
-    return `Welcome back! You have walked ${context.steps.toLocaleString()} steps today. Stay hydrated and conquer your key priorities!`;
+    return reply || fallbackText;
   }
 
   /**
-   * Generates a 1-click tailored ATS cover letter for a specific job application
+   * 3. 1-Click Tailored ATS Cover Letter
    */
   static async generateCoverLetter(company: string, role: string, tags: string[] = []): Promise<string> {
-    const key = this.apiKey;
     const profile = BHARATHI_CANDIDATE_PROFILE;
 
     const fallbackLetter = `Dear Hiring Team at ${company},
@@ -132,12 +356,11 @@ Sincerely,
 Bharathi V
 ${profile.email} | ${profile.phone}`;
 
-    if (!key || key.includes('your_gemini_api_key_here')) {
+    if (this.getConfiguredProviders().length === 0) {
       return fallbackLetter;
     }
 
-    try {
-      const prompt = `Write a compelling, concise 3-paragraph professional Cover Letter for:
+    const prompt = `Write a compelling, concise 3-paragraph professional Cover Letter for:
 Candidate: Bharathi V (${profile.title})
 Current Company: Sagasoft Technologies (Frontend Team Lead, 2+ YOE)
 Key Stack: React, React Native, Expo, Next.js, TypeScript, Zustand, OIDC, Enterprise SaaS
@@ -147,40 +370,26 @@ Target Tech: ${tags.join(', ')}
 
 Tone: Confident, technical, professional, executive. Keep it under 250 words so recruiters read it fully.`;
 
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${key}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-          }),
-        }
-      );
+    const letter = await this.queryLLM({
+      userPrompt: prompt,
+      maxTokens: 500,
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return text.trim();
-      }
-    } catch (err) {
-      console.warn('Cover letter AI generation error:', err);
-    }
-
-    return fallbackLetter;
+    return letter || fallbackLetter;
   }
 
   /**
-   * Evaluates an interview answer and provides score + feedback
+   * 4. Technical & HR Interview Feedback Coach
    */
   static async evaluateInterviewAnswer(question: string, userAnswer: string): Promise<string> {
-    const key = this.apiKey;
-    if (!key || key.includes('your_gemini_api_key_here')) {
-      return "✅ Good attempt! Key points covered. To score 10/10, ensure you highlight real-world production metrics and edge cases.";
+    const fallbackFeedback =
+      "✅ Good attempt! Key points covered. To score 10/10, ensure you quantify results and highlight production edge-cases.";
+
+    if (this.getConfiguredProviders().length === 0) {
+      return fallbackFeedback;
     }
 
-    try {
-      const prompt = `You are a Senior Tech Hiring Bar Raiser evaluating a candidate's answer.
+    const prompt = `You are a Senior Tech Hiring Bar Raiser evaluating a candidate's answer.
 Question: "${question}"
 Candidate Answer: "${userAnswer}"
 
@@ -190,26 +399,11 @@ Provide:
 3. What was missed or how to make it senior-level (1-2 bullet points)
 Keep reply under 150 words.`;
 
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${key}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-          }),
-        }
-      );
+    const feedback = await this.queryLLM({
+      userPrompt: prompt,
+      maxTokens: 300,
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return text.trim();
-      }
-    } catch {
-      // fallback
-    }
-
-    return "Good structure! Remember to quantify results and mention architectural trade-offs to stand out.";
+    return feedback || fallbackFeedback;
   }
 }
