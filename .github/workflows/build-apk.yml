@@ -69,38 +69,43 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
-      - name: 📋 Prepare APK File
+      - name: 📋 Prepare APK Output
         run: |
           mkdir -p build-output
-          # Get version from package.json
           VERSION=$(node -p "require('./package.json').version")
           cp android/app/build/outputs/apk/release/app-release.apk build-output/aayon-v${VERSION}.apk
-          echo "APK ready: build-output/aayon-v${VERSION}.apk"
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "APK ready at build-output/aayon-v${VERSION}.apk"
+          echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
+          if [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
+            echo "RELEASE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          else
+            echo "RELEASE_TAG=v${VERSION}-build${{ github.run_number }}" >> $GITHUB_ENV
+          fi
+          echo "RELEASE_TITLE=AAYON v${VERSION} (Build #${{ github.run_number }})" >> $GITHUB_ENV
 
       - name: 📤 Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: aayon-v${{ env.VERSION }}-apk
+          name: aayon-apk
           path: build-output/*.apk
           retention-days: 30
 
-      - name: 🚀 Create GitHub Release & Upload APK
-        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true')
+      - name: 🚀 Publish APK to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true') || github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}-{1}', env.VERSION, github.run_number) }}
-          name: ${{ format('Release v{0} (Build #{1})', env.VERSION, github.run_number) }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TITLE }}
           body: |
-            ### 📱 AAYON Android APK Build
+            ### 📱 AAYON Personal Life OS - Android Build
             
-            - **App Version:** `${{ env.VERSION }}`
-            - **Commit:** `${{ github.sha }}`
-            - **Branch:** `${{ github.ref_name }}`
-            - **Build Number:** `${{ github.run_number }}`
+            - **Version:** ${{ env.APP_VERSION }}
+            - **Commit:** ${{ github.sha }}
+            - **Branch:** ${{ github.ref_name }}
+            - **Build Number:** #${{ github.run_number }}
             
-            #### ⬇️ Download & Install:
-            Download the `aayon-v${{ env.VERSION }}.apk` attached below and install it directly on your Android device.
+            #### ⬇️ Installation:
+            Download the `aayon-v${{ env.APP_VERSION }}.apk` attached below and install it directly on your Android phone.
           files: build-output/*.apk
           draft: false
           prerelease: false
