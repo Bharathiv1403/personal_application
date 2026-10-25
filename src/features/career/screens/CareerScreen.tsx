@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,18 +17,31 @@ import { Badge } from '@/core/design-system/primitives/Badge';
 import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
 import { useJobStore, JobStage, JobApplicationItem } from '../state/job-store';
+import { useCandidateProfileStore } from '../state/candidate-profile-store';
+import { CareerProfileModal } from '../components/CareerProfileModal';
+import { JobPreferencesModal } from '../components/JobPreferencesModal';
+import { AnswerBankModal } from '../components/AnswerBankModal';
+import { AutoApplyPreviewModal } from '../components/AutoApplyPreviewModal';
 import { AddJobModal } from '../components/AddJobModal';
 import { AtsScannerModal } from '../components/AtsScannerModal';
 import { InHandSalaryModal } from '../components/InHandSalaryModal';
 import { AiCoverLetterModal } from '../components/AiCoverLetterModal';
 import { InterviewCoachModal } from '../components/InterviewCoachModal';
-import { useCandidateProfileStore } from '../state/candidate-profile-store';
+
+type NavTab = 'Jobs' | 'Tracker' | 'Profile' | 'Preferences' | 'Answer Bank';
 
 export const CareerScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'All' | 'wishlist' | 'applied' | 'interview' | 'offer'>('All');
+  const [activeTab, setActiveTab] = useState<NavTab>('Jobs');
+  const [trackerStage, setTrackerStage] = useState<'All' | 'wishlist' | 'applied' | 'interview' | 'offer'>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modals state
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [preferencesModalVisible, setPreferencesModalVisible] = useState(false);
+  const [answerBankModalVisible, setAnswerBankModalVisible] = useState(false);
+  const [autoApplyModalVisible, setAutoApplyModalVisible] = useState(false);
+  const [selectedJobForApply, setSelectedJobForApply] = useState<JobApplicationItem | null>(null);
+
   const [addJobModalVisible, setAddJobModalVisible] = useState(false);
   const [atsModalVisible, setAtsModalVisible] = useState(false);
   const [inHandModalVisible, setInHandModalVisible] = useState(false);
@@ -36,6 +49,7 @@ export const CareerScreen: React.FC = () => {
   const [coachModalVisible, setCoachModalVisible] = useState(false);
   const [selectedJobForLetter, setSelectedJobForLetter] = useState<JobApplicationItem | null>(null);
 
+  // Stores
   const jobs = useJobStore((s) => s.jobs);
   const isLoadingLiveJobs = useJobStore((s) => s.isLoadingLiveJobs);
   const updateJobStage = useJobStore((s) => s.updateJobStage);
@@ -44,17 +58,31 @@ export const CareerScreen: React.FC = () => {
   const refreshLiveJobs = useJobStore((s) => s.refreshLiveJobs);
   const profile = useCandidateProfileStore();
 
-  // Filter jobs by active tab and search query
-  const filteredJobs = jobs.filter((j) => {
-    const matchesTab = activeTab === 'All' ? true : j.stage === activeTab;
-    const query = searchQuery.trim().toLowerCase();
-    const matchesQuery =
-      !query ||
-      j.role.toLowerCase().includes(query) ||
-      j.companyName.toLowerCase().includes(query) ||
-      (j.tags && j.tags.some((t) => t.toLowerCase().includes(query)));
-    return matchesTab && matchesQuery;
-  });
+  // Statistics
+  const totalDiscovered = jobs.length;
+  const appliedCount = jobs.filter((j) => j.stage === 'applied').length;
+  const interviewCount = jobs.filter((j) => j.stage === 'interview' || j.stage === 'assessment').length;
+  const offerCount = jobs.filter((j) => j.stage === 'offer').length;
+  const highMatchCount = jobs.filter((j) => (j.matchScore || 0) >= (profile.preferences.skillsMatchThreshold || 75)).length;
+
+  // Filtered jobs
+  const filteredJobs = useMemo(() => {
+    return jobs.filter((j) => {
+      const query = searchQuery.trim().toLowerCase();
+      const matchesQuery =
+        !query ||
+        j.role.toLowerCase().includes(query) ||
+        j.companyName.toLowerCase().includes(query) ||
+        (j.tags && j.tags.some((t) => t.toLowerCase().includes(query)));
+
+      if (activeTab === 'Tracker') {
+        const matchesStage = trackerStage === 'All' ? true : j.stage === trackerStage;
+        return matchesStage && matchesQuery;
+      }
+
+      return matchesQuery;
+    });
+  }, [jobs, activeTab, trackerStage, searchQuery]);
 
   const handleLiveAutoSearch = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -63,19 +91,15 @@ export const CareerScreen: React.FC = () => {
     Alert.alert(
       'Live Discovery Complete ⚡',
       count > 0
-        ? `Found and synced ${count} new matching roles from live remote job boards!`
-        : 'All existing roles are up-to-date with your resume skills.'
+        ? `Found and synced ${count} new matching roles from Greenhouse, Lever & Remote job feeds!`
+        : 'All job feeds are up to date with your resume preferences.'
     );
   };
 
-  const handle1ClickApply = (job: JobApplicationItem) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    applyToJob(job.id, job.url);
-    Alert.alert(
-      'Opening Application 🚀',
-      `Launching application page for ${job.companyName}. Moving role to your "Applied" tracker!`,
-      [{ text: 'OK' }]
-    );
+  const handleOpenAutoApply = (job: JobApplicationItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setSelectedJobForApply(job);
+    setAutoApplyModalVisible(true);
   };
 
   const handleOpenCoverLetter = (job: JobApplicationItem) => {
@@ -88,7 +112,7 @@ export const CareerScreen: React.FC = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     Alert.alert(
       'Follow-Up Template Ready 📬',
-      `Subject: Follow-up on Senior Developer Application - ${company}\n\nHi ${recruiter || 'Hiring Team'},\n\nI am following up on my application for the Frontend / Mobile Developer position at ${company}. Having architected enterprise SaaS products (Saga Mail, Vue.js, React Native), I am very eager to discuss how my experience fits your team.\n\nBest regards,\nBharathi V\nFrontend Lead`
+      `Subject: Follow-up on Application - ${company}\n\nHi ${recruiter || 'Hiring Team'},\n\nI am following up on my application for the Developer position at ${company}. Having architected scalable production apps, I am eager to discuss how my experience fits your team.\n\nBest regards,\n${profile.name}\n${profile.targetRole}`
     );
   };
 
@@ -110,498 +134,633 @@ export const CareerScreen: React.FC = () => {
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Screen Header */}
+        {/* ========================================================= */}
+        {/* TOP HEADER & ANALYTICS BANNER */}
+        {/* ========================================================= */}
         <View style={styles.header}>
           <View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.screenTitle}>CareerPilot Engine</Text>
-              <Badge label="LIVE" variant="primary" />
+              <Text style={styles.screenTitle}>CareerPilot OS</Text>
+              <Badge label="AUTO-APPLY READY" variant="primary" />
             </View>
             <Text style={styles.screenSubtitle}>
-              {jobs.length} Active Opportunities • {profile.name} ({profile.targetRole})
+              {profile.name} • {profile.targetRole}
             </Text>
           </View>
+
           <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setAddJobModalVisible(true);
-            }}
+            style={styles.headerAiBtn}
+            onPress={() => setCoachModalVisible(true)}
           >
-            <Ionicons name="add" size={20} color={Colors.textInverse} />
+            <Ionicons name="chatbubble-ellipses" size={14} color="#A855F7" />
+            <Text style={styles.headerAiText}>AI Coach</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Search & Auto-Search Bar */}
-        <View style={styles.searchBarContainer}>
-          <View style={styles.searchInputWrapper}>
+        {/* Analytics Grid */}
+        <GlassCard style={styles.analyticsCard} variant="elevated">
+          <View style={styles.analyticsRow}>
+            <View style={styles.statBox}>
+              <Text style={styles.statNum}>{totalDiscovered}</Text>
+              <Text style={styles.statLabel}>Discovered</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={[styles.statNum, { color: '#38BDF8' }]}>{highMatchCount}</Text>
+              <Text style={styles.statLabel}>Top Matches</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={[styles.statNum, { color: '#4ADE80' }]}>{appliedCount}</Text>
+              <Text style={styles.statLabel}>Applied</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={[styles.statNum, { color: '#C084FC' }]}>{interviewCount}</Text>
+              <Text style={styles.statLabel}>Interviews</Text>
+            </View>
+          </View>
+        </GlassCard>
+
+        {/* ========================================================= */}
+        {/* QUICK ACTION BAR */}
+        {/* ========================================================= */}
+        <View style={styles.quickBar}>
+          <TouchableOpacity
+            style={[styles.quickBtn, { backgroundColor: 'rgba(99, 102, 241, 0.15)', borderColor: '#6366F1' }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setProfileModalVisible(true);
+            }}
+          >
+            <Ionicons name="person" size={14} color="#818CF8" />
+            <Text style={[styles.quickBtnText, { color: '#818CF8' }]}>Profile & Resumes</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.quickBtn, { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: '#38BDF8' }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setPreferencesModalVisible(true);
+            }}
+          >
+            <Ionicons name="options" size={14} color="#38BDF8" />
+            <Text style={[styles.quickBtnText, { color: '#38BDF8' }]}>Preferences</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.quickBtn, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: '#10B981' }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setAnswerBankModalVisible(true);
+            }}
+          >
+            <Ionicons name="bookmark" size={14} color="#10B981" />
+            <Text style={[styles.quickBtnText, { color: '#10B981' }]}>Answer Bank</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ========================================================= */}
+        {/* NAVIGATION SEGMENTED TABS */}
+        {/* ========================================================= */}
+        <View style={styles.navTabRow}>
+          {(['Jobs', 'Tracker', 'Profile', 'Preferences', 'Answer Bank'] as NavTab[]).map((tab) => {
+            const isSelected = activeTab === tab;
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.navTabChip, isSelected && styles.navTabChipActive]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  if (tab === 'Profile') setProfileModalVisible(true);
+                  else if (tab === 'Preferences') setPreferencesModalVisible(true);
+                  else if (tab === 'Answer Bank') setAnswerBankModalVisible(true);
+                  else setActiveTab(tab);
+                }}
+              >
+                <Text style={[styles.navTabChipText, isSelected && styles.navTabChipTextActive]}>
+                  {tab}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* ========================================================= */}
+        {/* SEARCH & DISCOVERY BAR */}
+        {/* ========================================================= */}
+        <View style={styles.searchRow}>
+          <View style={styles.searchInputWrap}>
             <Ionicons name="search" size={16} color={Colors.textMuted} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search React, Mobile, Next.js, Lead..."
+              placeholder="Search roles, skills (React, Vue, Remote)..."
               placeholderTextColor={Colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
-            {searchQuery ? (
+            {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
                 <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
               </TouchableOpacity>
-            ) : null}
+            )}
           </View>
 
           <TouchableOpacity
-            style={styles.autoSearchBtn}
+            style={styles.syncBtn}
             onPress={handleLiveAutoSearch}
             disabled={isLoadingLiveJobs}
           >
             {isLoadingLiveJobs ? (
-              <ActivityIndicator size="small" color={Colors.textInverse} />
+              <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <>
-                <Ionicons name="sync" size={14} color={Colors.textInverse} />
-                <Text style={styles.autoSearchBtnText}>Auto-Search</Text>
-              </>
+              <Ionicons name="refresh" size={18} color="#FFFFFF" />
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Quick Tools Dock */}
-        <View style={styles.toolsDock}>
-          <TouchableOpacity
-            style={styles.toolChip}
-            onPress={async () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              const uploaded = await profile.pickAndUploadResume();
-              if (uploaded) {
-                Alert.alert('Resume Attached 📄', 'Resume uploaded into your career profile!');
-              }
-            }}
-          >
-            <Ionicons name="document-attach-outline" size={15} color={Colors.gold} />
-            <Text style={styles.toolChipText} numberOfLines={1}>
-              {profile.resumeFileName ? 'Resume (PDF)' : 'Attach Resume'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolChip}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setCoachModalVisible(true);
-            }}
-          >
-            <Ionicons name="school-outline" size={15} color={Colors.primary} />
-            <Text style={styles.toolChipText}>Coach</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolChip}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setAtsModalVisible(true);
-            }}
-          >
-            <Ionicons name="document-text-outline" size={15} color={Colors.cyan} />
-            <Text style={styles.toolChipText}>ATS Scanner</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolChip}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setInHandModalVisible(true);
-            }}
-          >
-            <Ionicons name="calculator-outline" size={15} color={Colors.gold} />
-            <Text style={styles.toolChipText}>In-Hand CTC</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Filter Tabs */}
-        <View style={styles.tabsRow}>
-          {[
-            { id: 'All', label: 'All Jobs' },
-            { id: 'wishlist', label: 'Discovered' },
-            { id: 'applied', label: 'Applied' },
-            { id: 'interview', label: 'Interviews' },
-            { id: 'offer', label: 'Offers' },
-          ].map((tab) => (
-            <TouchableOpacity
-              key={tab.id}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                setActiveTab(tab.id as any);
-              }}
-              style={[styles.tabButton, activeTab === tab.id && styles.tabButtonActive]}
-            >
-              <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Job Cards */}
-        {filteredJobs.length === 0 ? (
-          <GlassCard style={{ padding: Spacing.xl, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="briefcase-outline" size={36} color={Colors.primary} />
-            <Text style={{ color: Colors.textPrimary, fontSize: 16, fontWeight: '700', marginTop: 10 }}>
-              No Roles in {activeTab === 'All' ? 'Pipeline' : activeTab.toUpperCase()}
-            </Text>
-            <Text style={{ color: Colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: 4 }}>
-              Tap "Auto-Search" above to discover matching remote & tech jobs from live boards!
-            </Text>
-          </GlassCard>
-        ) : (
-          filteredJobs.map((job) => (
-            <GlassCard key={job.id} style={styles.jobCard}>
-              {/* Top Row: Company & Badges */}
-              <View style={styles.jobTopRow}>
-                <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text style={styles.companyName} numberOfLines={1}>
-                    {job.companyName}
-                  </Text>
-                  <Text style={styles.jobRole} numberOfLines={2}>
-                    {job.role}
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                  <Badge label={job.stage.toUpperCase()} variant={getStageVariant(job.stage)} />
-                  {job.matchScore ? (
-                    <Badge
-                      label={`${job.matchScore}% Match`}
-                      variant={job.matchScore >= 90 ? 'primary' : 'gold'}
-                    />
-                  ) : null}
-                </View>
-              </View>
-
-              {/* Meta Info: Location & Salary */}
-              <View style={styles.jobMetaRow}>
-                <Text style={styles.jobMetaText}>
-                  <Ionicons name="location-outline" size={13} color={Colors.textSecondary} /> {job.location} ({job.workMode})
+        {/* Tracker Pipeline Filter (When in Tracker tab) */}
+        {activeTab === 'Tracker' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stageFilterScroll}>
+            {(['All', 'wishlist', 'applied', 'interview', 'offer'] as const).map((st) => (
+              <TouchableOpacity
+                key={st}
+                style={[styles.stageChip, trackerStage === st && styles.stageChipActive]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  setTrackerStage(st);
+                }}
+              >
+                <Text style={[styles.stageChipText, trackerStage === st && styles.stageChipTextActive]}>
+                  {st.charAt(0).toUpperCase() + st.slice(1)}
                 </Text>
-                <Text style={styles.jobMetaText}>
-                  <Ionicons name="cash-outline" size={13} color={Colors.textSecondary} /> {job.ctcMin} - {job.ctcMax} LPA
-                </Text>
-              </View>
-
-              {/* Tags Row */}
-              {job.tags && job.tags.length > 0 && (
-                <View style={styles.tagsContainer}>
-                  {job.tags.slice(0, 4).map((t, idx) => (
-                    <View key={idx} style={styles.tagPill}>
-                      <Text style={styles.tagText}>{t}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Primary Action Buttons: 1-Click Apply & AI Cover Letter */}
-              <View style={styles.actionButtonsGrid}>
-                <TouchableOpacity
-                  style={[styles.primaryActionBtn, styles.applyBtn]}
-                  onPress={() => handle1ClickApply(job)}
-                >
-                  <Ionicons name="rocket" size={14} color={Colors.textInverse} />
-                  <Text style={styles.applyBtnText}>1-Click Apply</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.primaryActionBtn, styles.coverLetterBtn]}
-                  onPress={() => handleOpenCoverLetter(job)}
-                >
-                  <Ionicons name="sparkles" size={14} color={Colors.gold} />
-                  <Text style={styles.coverLetterBtnText}>AI Cover Letter</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Secondary Actions: Advance Stage & Delete */}
-              <View style={styles.secondaryRow}>
-                <TouchableOpacity
-                  style={styles.secondaryBtn}
-                  onPress={() => handleFollowUp(job.companyName, job.recruiterName)}
-                >
-                  <Ionicons name="mail-outline" size={13} color={Colors.textSecondary} />
-                  <Text style={styles.secondaryBtnText}>Follow Up</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.secondaryBtn}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                    const nextStage: JobStage =
-                      job.stage === 'wishlist'
-                        ? 'applied'
-                        : job.stage === 'applied'
-                        ? 'interview'
-                        : job.stage === 'interview'
-                        ? 'offer'
-                        : 'wishlist';
-                    updateJobStage(job.id, nextStage);
-                  }}
-                >
-                  <Ionicons name="arrow-forward-circle-outline" size={13} color={Colors.primary} />
-                  <Text style={styles.secondaryBtnText}>
-                    Stage: {job.stage.toUpperCase()}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                    Alert.alert('Remove Role', `Remove ${job.companyName} from your tracker?`, [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Remove',
-                        style: 'destructive',
-                        onPress: () => deleteJob(job.id),
-                      },
-                    ]);
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={14} color={Colors.danger} />
-                </TouchableOpacity>
-              </View>
-            </GlassCard>
-          ))
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         )}
+
+        {/* ========================================================= */}
+        {/* JOB CARDS LIST */}
+        {/* ========================================================= */}
+        <View style={styles.jobsList}>
+          {filteredJobs.length === 0 ? (
+            <View style={styles.emptyWrap}>
+              <Ionicons name="briefcase-outline" size={42} color={Colors.textMuted} />
+              <Text style={styles.emptyTitle}>No matching roles found</Text>
+              <Text style={styles.emptySub}>
+                Tap the refresh icon to sync real remote opportunities from live job feeds.
+              </Text>
+            </View>
+          ) : (
+            filteredJobs.map((job) => {
+              const matchScore = job.matchScore || 85;
+              const isApplied = job.stage === 'applied';
+
+              return (
+                <GlassCard key={job.id} style={styles.jobCard} variant="elevated">
+                  {/* Job Header */}
+                  <View style={styles.jobCardTop}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.jobRole}>{job.role}</Text>
+                      <Text style={styles.jobCompany}>{job.companyName}</Text>
+                    </View>
+                    <Badge
+                      label={`${matchScore}% Match`}
+                      variant={matchScore >= 80 ? 'primary' : 'gold'}
+                    />
+                  </View>
+
+                  {/* Metadata Row */}
+                  <View style={styles.jobMetaRow}>
+                    <View style={styles.metaPill}>
+                      <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
+                      <Text style={styles.metaPillText}>{job.location}</Text>
+                    </View>
+                    <View style={styles.metaPill}>
+                      <Ionicons name="globe-outline" size={12} color="#38BDF8" />
+                      <Text style={[styles.metaPillText, { color: '#38BDF8' }]}>{job.workMode}</Text>
+                    </View>
+                    <View style={styles.metaPill}>
+                      <Ionicons name="cash-outline" size={12} color="#4ADE80" />
+                      <Text style={[styles.metaPillText, { color: '#4ADE80' }]}>
+                        ₹{job.ctcMin} – {job.ctcMax} LPA
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Tags */}
+                  {job.tags && job.tags.length > 0 && (
+                    <View style={styles.tagsRow}>
+                      {job.tags.slice(0, 4).map((tag, idx) => (
+                        <View key={idx} style={styles.skillChip}>
+                          <Text style={styles.skillChipText}>{tag}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <View style={styles.cardDivider} />
+
+                  {/* Bottom Actions */}
+                  <View style={styles.jobCardBottom}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Badge label={job.stage.toUpperCase()} variant={getStageVariant(job.stage)} />
+                      {job.appliedDate && (
+                        <Text style={styles.appliedDateText}>Applied: {job.appliedDate}</Text>
+                      )}
+                    </View>
+
+                    <View style={styles.cardActionGroup}>
+                      <TouchableOpacity
+                        style={styles.letterBtn}
+                        onPress={() => handleOpenCoverLetter(job)}
+                      >
+                        <Ionicons name="document-text-outline" size={14} color="#F59E0B" />
+                        <Text style={styles.letterBtnText}>Letter</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.applyBtn, isApplied && styles.applyBtnDisabled]}
+                        onPress={() => handleOpenAutoApply(job)}
+                      >
+                        <Ionicons
+                          name={isApplied ? 'checkmark-circle' : 'rocket'}
+                          size={14}
+                          color="#FFFFFF"
+                        />
+                        <Text style={styles.applyBtnText}>
+                          {isApplied ? 'Re-Apply' : 'Auto-Apply'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </GlassCard>
+              );
+            })
+          )}
+        </View>
       </ScrollView>
 
-      {/* Modals */}
-      <AddJobModal visible={addJobModalVisible} onClose={() => setAddJobModalVisible(false)} />
-      <AtsScannerModal visible={atsModalVisible} onClose={() => setAtsModalVisible(false)} />
-      <InHandSalaryModal visible={inHandModalVisible} onClose={() => setInHandModalVisible(false)} />
+      {/* ========================================================= */}
+      {/* ALL MODALS */}
+      {/* ========================================================= */}
+      <CareerProfileModal
+        visible={profileModalVisible}
+        onClose={() => setProfileModalVisible(false)}
+      />
+      <JobPreferencesModal
+        visible={preferencesModalVisible}
+        onClose={() => setPreferencesModalVisible(false)}
+      />
+      <AnswerBankModal
+        visible={answerBankModalVisible}
+        onClose={() => setAnswerBankModalVisible(false)}
+      />
+      <AutoApplyPreviewModal
+        visible={autoApplyModalVisible}
+        job={selectedJobForApply}
+        onClose={() => setAutoApplyModalVisible(false)}
+        onApplied={(id) => applyToJob(id)}
+        onOpenCoverLetter={handleOpenCoverLetter}
+      />
+      <AddJobModal
+        visible={addJobModalVisible}
+        onClose={() => setAddJobModalVisible(false)}
+      />
+      <AtsScannerModal
+        visible={atsModalVisible}
+        onClose={() => setAtsModalVisible(false)}
+      />
+      <InHandSalaryModal
+        visible={inHandModalVisible}
+        onClose={() => setInHandModalVisible(false)}
+      />
       <AiCoverLetterModal
         visible={coverLetterModalVisible}
         job={selectedJobForLetter}
         onClose={() => setCoverLetterModalVisible(false)}
-        onApply={(job) => handle1ClickApply(job)}
+        onApply={(j) => applyToJob(j.id, j.url)}
       />
-      <InterviewCoachModal visible={coachModalVisible} onClose={() => setCoachModalVisible(false)} />
+      <InterviewCoachModal
+        visible={coachModalVisible}
+        onClose={() => setCoachModalVisible(false)}
+      />
     </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
   scrollContent: {
-    padding: Spacing.screenPadding,
-    paddingBottom: 40,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: 90,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   screenTitle: {
     fontSize: 22,
-    fontWeight: '700',
-    color: Colors.textPrimary,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   screenSubtitle: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
     marginTop: 2,
   },
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: Radii.full,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchBarContainer: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-    marginBottom: Spacing.sm,
-  },
-  searchInputWrapper: {
-    flex: 1,
+  headerAiBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#16161A',
+    backgroundColor: 'rgba(168, 85, 247, 0.15)',
     borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radii.md,
-    paddingHorizontal: 10,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 8,
-    color: Colors.textPrimary,
-    fontSize: 13,
-  },
-  autoSearchBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary,
+    borderColor: '#A855F7',
     paddingHorizontal: 12,
-    borderRadius: Radii.md,
-    gap: 6,
-  },
-  autoSearchBtnText: {
-    color: Colors.textInverse,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  toolsDock: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-    marginBottom: Spacing.sm,
-  },
-  toolChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingVertical: 8,
-    borderRadius: Radii.md,
-    gap: 5,
-  },
-  toolChipText: {
-    fontSize: 11,
-    color: Colors.textPrimary,
-    fontWeight: '600',
-  },
-  tabsRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: Spacing.md,
-    flexWrap: 'wrap',
-  },
-  tabButton: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderRadius: Radii.full,
-    backgroundColor: 'transparent',
-  },
-  tabButtonActive: {
-    backgroundColor: Colors.cardSubtle,
-  },
-  tabText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  tabTextActive: {
-    color: Colors.textPrimary,
-    fontWeight: '700',
-  },
-  jobCard: {
-    marginBottom: Spacing.md,
-    padding: Spacing.md,
-  },
-  jobTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 6,
-  },
-  companyName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  jobRole: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  jobMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  jobMetaText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 10,
   },
-  tagPill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: Radii.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+  headerAiText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#A855F7',
   },
-  tagText: {
-    fontSize: 10,
-    color: Colors.textSecondary,
-    fontWeight: '500',
+
+  // Analytics Banner
+  analyticsCard: {
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
   },
-  actionButtonsGrid: {
+  analyticsRow: {
     flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  primaryActionBtn: {
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNum: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  statLabel: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+
+  // Quick Bar
+  quickBar: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: Spacing.md,
+  },
+  quickBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 9,
-    borderRadius: Radii.md,
+    borderRadius: Radii.lg,
+    borderWidth: 1,
     gap: 6,
   },
-  applyBtn: {
+  quickBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  // Nav Tabs
+  navTabRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: Radii.lg,
+    padding: 3,
+    marginBottom: Spacing.md,
+    gap: 4,
+  },
+  navTabChip: {
+    flex: 1,
+    paddingVertical: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Radii.md,
+  },
+  navTabChipActive: {
     backgroundColor: Colors.primary,
   },
-  applyBtnText: {
-    color: Colors.textInverse,
-    fontSize: 12,
+  navTabChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  navTabChipTextActive: {
+    color: '#FFFFFF',
     fontWeight: '700',
   },
-  coverLetterBtn: {
-    backgroundColor: 'rgba(234, 179, 8, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(234, 179, 8, 0.3)',
-  },
-  coverLetterBtnText: {
-    color: Colors.gold,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  secondaryRow: {
+
+  // Search
+  searchRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingTop: 8,
-    gap: Spacing.sm,
+    gap: 8,
+    marginBottom: Spacing.md,
   },
-  secondaryBtn: {
+  searchInputWrap: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 5,
-    borderRadius: Radii.sm,
-    backgroundColor: Colors.cardSubtle,
-    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 12,
+    gap: 8,
   },
-  secondaryBtnText: {
+  searchInput: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 13,
+    paddingVertical: 10,
+  },
+  syncBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: Radii.lg,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Stage Filter
+  stageFilterScroll: {
+    marginBottom: Spacing.md,
+  },
+  stageChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radii.full,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  stageChipActive: {
+    backgroundColor: 'rgba(99, 102, 241, 0.25)',
+    borderColor: Colors.primary,
+  },
+  stageChipText: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
     fontWeight: '600',
   },
-  deleteBtn: {
-    padding: 6,
+  stageChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+
+  // Job Cards
+  jobsList: {
+    gap: 12,
+  },
+  jobCard: {
+    padding: Spacing.md,
+    borderRadius: Radii.xl,
+  },
+  jobCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  jobRole: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  jobCompany: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  jobMetaRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 8,
+    flexWrap: 'wrap',
+  },
+  metaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: Radii.sm,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    gap: 4,
+  },
+  metaPillText: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontWeight: '500',
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 8,
+    flexWrap: 'wrap',
+  },
+  skillChip: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: Radii.sm,
+  },
+  skillChipText: {
+    fontSize: 10,
+    color: '#A5B4FC',
+    fontWeight: '600',
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginVertical: 10,
+  },
+  jobCardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  appliedDateText: {
+    fontSize: 10,
+    color: Colors.textMuted,
+  },
+  cardActionGroup: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  letterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radii.md,
+    gap: 4,
+  },
+  letterBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  applyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radii.md,
+    gap: 5,
+  },
+  applyBtnDisabled: {
+    backgroundColor: '#059669',
+  },
+  applyBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // Empty state
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+    gap: 6,
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  emptySub: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
 });
