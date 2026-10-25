@@ -76,7 +76,21 @@ EXPO_PUBLIC_GOOGLE_CLIENT_ID=your_oauth_client_id_here
 npx expo start -c
 ```
 
-### Building for Android (EAS Build)
+### Building & Downloading Standalone APK from GitHub 📦
+
+#### Option 1: Automated GitHub Actions (Free & Direct APK Download)
+1. **From GitHub Actions Artifacts:**
+   - Go to your repository on GitHub: `https://github.com/Bharathiv1403/personal_application`
+   - Click the **Actions** tab.
+   - Click the **Build Android APK** workflow on the left.
+   - Click **Run workflow** -> **Run workflow** (or simply push any commit to `main`).
+   - Once completed, open the workflow run and scroll to **Artifacts** to download `aayon-v1.0.0-apk.zip` containing the installable `.apk`.
+
+2. **From GitHub Releases (1-Click APK Download):**
+   - In GitHub Actions -> **Build Android APK**, trigger with `Publish APK to GitHub Releases` set to `true` (or push a tag `git tag v1.0.0 && git push origin v1.0.0`).
+   - Go to the **Releases** tab on GitHub and download `aayon-v1.0.0.apk` directly to your phone.
+
+#### Option 2: EAS Cloud Build
 ```bash
 # Preview standalone APK
 npx eas build --profile preview --platform android
