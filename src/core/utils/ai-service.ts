@@ -28,8 +28,9 @@ export class AIService {
    */
   static getConfiguredProviders(): AIProvider[] {
     const list: AIProvider[] = [];
-    if (this.isValidKey(this.geminiKey)) list.push('gemini');
+    // Prioritize Groq for ultra-fast (sub-second) responses
     if (this.isValidKey(this.groqKey)) list.push('groq');
+    if (this.isValidKey(this.geminiKey)) list.push('gemini');
     if (this.ollamaUrl && this.ollamaUrl.startsWith('http')) list.push('ollama');
     if (this.isValidKey(this.hfKey)) list.push('huggingface');
     return list;
@@ -40,7 +41,7 @@ export class AIService {
   }
 
   /**
-   * Unified multi-provider runner with automatic failover (Gemini -> Groq -> Ollama -> HuggingFace)
+   * Unified multi-provider runner with automatic failover (Groq -> Gemini -> Ollama -> HuggingFace)
    */
   private static async queryLLM(options: QueryOptions): Promise<string | null> {
     const providers = this.getConfiguredProviders();
@@ -49,11 +50,11 @@ export class AIService {
       try {
         let result: string | null = null;
         switch (provider) {
-          case 'gemini':
-            result = await this.callGemini(options);
-            break;
           case 'groq':
             result = await this.callGroq(options);
+            break;
+          case 'gemini':
+            result = await this.callGemini(options);
             break;
           case 'ollama':
             result = await this.callOllama(options);
@@ -75,11 +76,17 @@ export class AIService {
   }
 
   /**
-   * Provider 1: Google Gemini (Gemini 2.0 Flash / 1.5 Flash)
+   * Provider: Google Gemini
    */
   private static async callGemini(options: QueryOptions): Promise<string | null> {
     const key = this.geminiKey;
-    const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+    const models = [
+      'gemini-3.8-flash',
+      'gemini-2.5-flash',
+      'gemini-flash-latest',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+    ];
 
     const contents: any[] = [];
     
@@ -108,14 +115,19 @@ export class AIService {
 
     for (const model of models) {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(bodyPayload),
+            signal: controller.signal,
           }
         );
+        clearTimeout(timeoutId);
 
         if (!response.ok) continue;
         const data = await response.json();
@@ -130,11 +142,17 @@ export class AIService {
   }
 
   /**
-   * Provider 2: Groq Cloud (Ultra-Fast Llama 3.3 70B & 3.1 8B)
+   * Provider: Groq Cloud (Ultra-Fast 120B / 20B / Llama)
    */
   private static async callGroq(options: QueryOptions): Promise<string | null> {
     const key = this.groqKey;
-    const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+    const models = [
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b',
+      'qwen/qwen3.8-27b',
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+    ];
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
     if (options.systemPrompt) {
