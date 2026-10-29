@@ -527,9 +527,11 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: Spacing.xs,
     marginBottom: Spacing.md,
+    flexWrap: 'wrap',
   },
   testBtn: {
     flex: 1,
+    minWidth: 120,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -547,6 +549,7 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     flex: 1.2,
+    minWidth: 140,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

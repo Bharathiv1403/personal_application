@@ -673,7 +673,7 @@ export const CareerScreen: React.FC = () => {
 
                     {/* Bottom Actions */}
                     <View style={styles.jobCardBottom}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+                      <View style={styles.jobCardStageRow}>
                         <TouchableOpacity
                           style={styles.stagePickerTrigger}
                           onPress={() => handleQuickStageChange(job)}
@@ -837,9 +837,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
     gap: 8,
+    flexWrap: 'wrap',
   },
   headerTitleWrap: {
     flex: 1,
+    minWidth: 160,
     marginRight: 6,
   },
   headerActionsWrap: {
@@ -847,6 +849,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     flexShrink: 0,
+    flexWrap: 'wrap',
   },
   screenTitle: {
     fontSize: 22,
@@ -1108,9 +1111,14 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   jobCardBottom: {
+    gap: 8,
+    marginTop: 4,
+  },
+  jobCardStageRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
   },
   appliedDateText: {
     fontSize: 10,
@@ -1118,16 +1126,21 @@ const styles = StyleSheet.create({
   },
   cardActionGroup: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
+    width: '100%',
   },
   letterBtn: {
+    flex: 1,
+    minWidth: 68,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
     borderWidth: 1,
     borderColor: '#F59E0B',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
     borderRadius: Radii.md,
     gap: 4,
   },
@@ -1137,19 +1150,22 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
   },
   applyBtn: {
+    flex: 1.2,
+    minWidth: 82,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderRadius: Radii.md,
-    gap: 5,
+    gap: 4,
   },
   applyBtnDisabled: {
     backgroundColor: '#059669',
   },
   applyBtnText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -1193,13 +1209,16 @@ const styles = StyleSheet.create({
     color: '#38BDF8',
   },
   pitchBtn: {
+    flex: 1,
+    minWidth: 64,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: 'rgba(56, 189, 248, 0.15)',
     borderWidth: 1,
     borderColor: '#38BDF8',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
     borderRadius: Radii.md,
     gap: 4,
   },

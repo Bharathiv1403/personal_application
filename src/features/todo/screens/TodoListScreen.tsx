@@ -298,12 +298,13 @@ export const TodoListScreen: React.FC = () => {
 const styles = StyleSheet.create({
   scrollContent: {
     padding: Spacing.screenPadding,
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: Spacing.md,
+    gap: 8,
   },
   backButton: {
     width: 36,

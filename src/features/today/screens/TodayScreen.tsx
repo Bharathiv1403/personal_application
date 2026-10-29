@@ -176,18 +176,18 @@ export const TodayScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Top Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>{getGreeting()}, {userName} 👋</Text>
+          <View style={styles.headerTitleWrap}>
+            <Text style={styles.greeting} numberOfLines={1}>{getGreeting()}, {userName} 👋</Text>
             <View style={styles.subHeaderRow}>
               <Text style={styles.subDate}>{formattedDate} • Life OS</Text>
               {weather && (
                 <View style={styles.weatherBadge}>
-                  <Text style={styles.weatherText}>⛅ {weather.tempCelsius}°C {weather.city}</Text>
+                  <Text style={styles.weatherText}>⛅ {weather.tempCelsius}°C</Text>
                 </View>
               )}
             </View>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+          <View style={styles.headerActionsWrap}>
             <TouchableOpacity
               style={styles.bellButton}
               onPress={() => {
@@ -395,13 +395,26 @@ export const TodayScreen: React.FC = () => {
 const styles = StyleSheet.create({
   scrollContent: {
     padding: Spacing.screenPadding,
-    paddingBottom: 130,
+    paddingBottom: 150,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.lg,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  headerTitleWrap: {
+    flex: 1,
+    minWidth: 160,
+    marginRight: 6,
+  },
+  headerActionsWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    flexShrink: 0,
   },
   greeting: {
     fontSize: 22,
@@ -631,26 +644,33 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: Spacing.md,
+    gap: Spacing.sm,
+    marginTop: 4,
   },
   modalCancelBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.cardSubtle,
+    borderRadius: Radii.md,
   },
   modalCancelText: {
     color: Colors.textSecondary,
     fontSize: 14,
+    fontWeight: '600',
   },
   modalSaveBtn: {
+    flex: 1,
     backgroundColor: Colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: Radii.md,
   },
   modalSaveText: {
     color: Colors.textInverse,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

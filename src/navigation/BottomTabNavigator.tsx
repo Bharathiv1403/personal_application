@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainTabParamList } from './types';
 import { TodayScreen } from '@/features/today/screens/TodayScreen';
 import { CareerScreen } from '@/features/career/screens/CareerScreen';
@@ -12,6 +13,9 @@ import { Colors } from '@/core/design-system/tokens/colors';
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export const BottomTabNavigator: React.FC = () => {
+  const insets = useSafeAreaInsets();
+  const tabHeight = 58 + (insets.bottom > 0 ? insets.bottom : 8);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -20,9 +24,9 @@ export const BottomTabNavigator: React.FC = () => {
           backgroundColor: '#0E0F14',
           borderTopColor: 'rgba(255, 255, 255, 0.08)',
           borderTopWidth: 1,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 8,
+          height: tabHeight,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+          paddingTop: 6,
         },
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,

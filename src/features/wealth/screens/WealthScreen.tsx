@@ -2147,7 +2147,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    paddingBottom: 150,
+    paddingBottom: 160,
   },
   header: {
     flexDirection: 'row',
@@ -2155,9 +2155,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
     gap: 8,
+    flexWrap: 'wrap',
   },
   headerTitleWrap: {
     flex: 1,
+    minWidth: 160,
     marginRight: 6,
   },
   headerActionsWrap: {
@@ -2165,6 +2167,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     flexShrink: 0,
+    flexWrap: 'wrap',
   },
   screenTitle: {
     fontSize: 22,
@@ -3097,10 +3100,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: Spacing.sm,
+    gap: 8,
+    flexWrap: 'wrap',
   },
   tripManageBtn: {
+    flex: 1,
+    minWidth: 160,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.primary,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -3181,6 +3189,8 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.04)',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   settleBtn: {
     flexDirection: 'row',

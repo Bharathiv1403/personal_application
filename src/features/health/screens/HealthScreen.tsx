@@ -70,7 +70,7 @@ export const HealthScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Screen Header */}
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1, minWidth: 160 }}>
             <Text style={styles.screenTitle}>Health & Vitality</Text>
             <Text style={styles.screenSubtitle}>Google Fit Sensor Engine</Text>
           </View>
@@ -226,13 +226,15 @@ export const HealthScreen: React.FC = () => {
 const styles = StyleSheet.create({
   scrollContent: {
     padding: Spacing.screenPadding,
-    paddingBottom: 130,
+    paddingBottom: 150,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.md,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   screenTitle: {
     fontSize: 22,
@@ -426,16 +428,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.sm,
     marginTop: Spacing.xs,
+    flexWrap: 'wrap',
   },
   waterBtn: {
     flex: 1,
+    minWidth: 120,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.cyanGlow,
     borderWidth: 1,
     borderColor: 'rgba(6, 182, 212, 0.3)',
-    paddingVertical: 7,
+    paddingVertical: 9,
     borderRadius: Radii.md,
     gap: 6,
   },

@@ -580,7 +580,7 @@ export const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   scrollContent: {
     padding: Spacing.screenPadding,
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   header: {
     flexDirection: 'row',
@@ -783,9 +783,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.sm,
     marginTop: Spacing.lg,
+    flexWrap: 'wrap',
   },
   lockBtn: {
     flex: 1,
+    minWidth: 140,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -803,6 +805,7 @@ const styles = StyleSheet.create({
   },
   resetBtn: {
     flex: 1,
+    minWidth: 140,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

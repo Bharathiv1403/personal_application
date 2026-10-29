@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
@@ -104,10 +104,15 @@ export const AgentScreen: React.FC = () => {
 
   return (
     <ScreenContainer>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+      >
+        <View style={styles.container}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={{ flex: 1 }}>
             <Text style={styles.title}>AAYON • AI Copilot</Text>
             <Text style={styles.subtitle}>Executive Assistant & Career Mentor</Text>
           </View>
@@ -227,6 +232,7 @@ export const AgentScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
+      </KeyboardAvoidingView>
 
       <ApiKeyModal
         visible={apiKeyModalVisible}
@@ -393,6 +399,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
     gap: Spacing.sm,
+    marginBottom: Platform.OS === 'ios' ? 14 : 10,
   },
   textInput: {
     flex: 1,
