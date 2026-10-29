@@ -226,7 +226,7 @@ export const HealthScreen: React.FC = () => {
 const styles = StyleSheet.create({
   scrollContent: {
     padding: Spacing.screenPadding,
-    paddingBottom: 40,
+    paddingBottom: 130,
   },
   header: {
     flexDirection: 'row',

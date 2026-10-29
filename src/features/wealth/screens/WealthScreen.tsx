@@ -628,11 +628,11 @@ export const WealthScreen: React.FC = () => {
         {/* TOP HEADER */}
         {/* ========================================================= */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.screenTitle}>Executive Finance OS</Text>
-            <Text style={styles.screenSubtitle}>Enterprise Cashflow, Budgets & Accounts</Text>
+          <View style={styles.headerTitleWrap}>
+            <Text style={styles.screenTitle} numberOfLines={1}>Executive Finance OS</Text>
+            <Text style={styles.screenSubtitle} numberOfLines={1}>Enterprise Cashflow, Budgets & Accounts</Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <View style={styles.headerActionsWrap}>
             <TouchableOpacity
               style={[styles.stealthToggleBtn, isStealthMode && styles.stealthToggleBtnActive]}
               onPress={() => {
@@ -661,8 +661,8 @@ export const WealthScreen: React.FC = () => {
                 setAiInsightsModalVisible(true);
               }}
             >
-              <Ionicons name="sparkles" size={14} color="#F59E0B" />
-              <Text style={styles.aiButtonText}>AI Insights</Text>
+              <Ionicons name="sparkles" size={13} color="#F59E0B" />
+              <Text style={styles.aiButtonText}>AI</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -728,24 +728,24 @@ export const WealthScreen: React.FC = () => {
             style={[styles.quickActionBtn, { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: '#EF4444' }]}
             onPress={() => openAddTx('expense')}
           >
-            <Ionicons name="arrow-up" size={16} color="#EF4444" />
-            <Text style={[styles.quickActionText, { color: '#EF4444' }]}>+ Expense</Text>
+            <Ionicons name="arrow-up" size={14} color="#EF4444" />
+            <Text style={[styles.quickActionText, { color: '#EF4444' }]} numberOfLines={1}>Expense</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.quickActionBtn, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: '#10B981' }]}
             onPress={() => openAddTx('income')}
           >
-            <Ionicons name="arrow-down" size={16} color="#10B981" />
-            <Text style={[styles.quickActionText, { color: '#10B981' }]}>+ Income</Text>
+            <Ionicons name="arrow-down" size={14} color="#10B981" />
+            <Text style={[styles.quickActionText, { color: '#10B981' }]} numberOfLines={1}>Income</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.quickActionBtn, { backgroundColor: 'rgba(59, 130, 246, 0.15)', borderColor: '#3B82F6' }]}
             onPress={() => openAddTx('transfer')}
           >
-            <Ionicons name="swap-horizontal" size={16} color="#3B82F6" />
-            <Text style={[styles.quickActionText, { color: '#3B82F6' }]}>⇄ Transfer</Text>
+            <Ionicons name="swap-horizontal" size={14} color="#3B82F6" />
+            <Text style={[styles.quickActionText, { color: '#3B82F6' }]} numberOfLines={1}>Transfer</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -755,8 +755,8 @@ export const WealthScreen: React.FC = () => {
               setAddAccountModalVisible(true);
             }}
           >
-            <Ionicons name="card" size={16} color="#A855F7" />
-            <Text style={[styles.quickActionText, { color: '#A855F7' }]}>+ Account</Text>
+            <Ionicons name="card" size={14} color="#A855F7" />
+            <Text style={[styles.quickActionText, { color: '#A855F7' }]} numberOfLines={1}>Account</Text>
           </TouchableOpacity>
         </View>
 
@@ -776,9 +776,9 @@ export const WealthScreen: React.FC = () => {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.salaryBannerTitle}>Monthly Salary & Expense Planner</Text>
-              <Text style={styles.salaryBannerSub} numberOfLines={1}>
+              <Text style={styles.salaryBannerSub} numberOfLines={2}>
                 {monthlySalary > 0
-                  ? `Salary: ${formatINR(monthlySalary)} • Spent: ${formatINR(totalExpense)} • Left: ${formatINR(Math.max(0, monthlySalary - totalExpense))}`
+                  ? `Salary: ${formatINR(monthlySalary)} • Spent: ${formatINR(totalExpense)}\nLeft: ${formatINR(Math.max(0, monthlySalary - totalExpense))}`
                   : 'Tap to add your monthly salary & start logging expenses'}
               </Text>
             </View>
@@ -792,7 +792,12 @@ export const WealthScreen: React.FC = () => {
         {/* ========================================================= */}
         {/* NAVIGATION SEGMENTED TABS */}
         {/* ========================================================= */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabScroll}
+          contentContainerStyle={styles.tabScrollContent}
+        >
           {(
             [
               'Overview',
@@ -892,36 +897,41 @@ export const WealthScreen: React.FC = () => {
             </ScrollView>
 
             {/* Transactions Header with Time Filter & CSV Export */}
-            <View style={styles.txHeaderRow}>
-              <View>
-                <Text style={styles.sectionTitle}>Transactions</Text>
-                <Text style={styles.sectionSubtitle}>Tap to edit • Hold to delete</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={styles.txHeaderCol}>
+              <View style={styles.txHeaderTop}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={styles.sectionTitle}>Transactions</Text>
+                  <Text style={styles.sectionSubtitle}>Tap to edit • Hold to delete</Text>
+                </View>
                 <TouchableOpacity
                   style={styles.exportCsvBtn}
                   onPress={handleQuickExportCSV}
                 >
                   <Ionicons name="share-outline" size={13} color="#60A5FA" />
-                  <Text style={styles.exportCsvText}>CSV</Text>
+                  <Text style={styles.exportCsvText}>Export CSV</Text>
                 </TouchableOpacity>
-                <View style={styles.timeFilterRow}>
-                  {(['Today', 'Week', 'Month', 'All'] as TimeFilter[]).map((f) => (
-                    <TouchableOpacity
-                      key={f}
-                      style={[styles.timeChip, timeFilter === f && styles.timeChipActive]}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                        setTimeFilter(f);
-                      }}
-                    >
-                      <Text style={[styles.timeChipText, timeFilter === f && styles.timeChipTextActive]}>
-                        {f}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
               </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.timeFilterScroll}
+                contentContainerStyle={styles.timeFilterRow}
+              >
+                {(['Today', 'Week', 'Month', 'All'] as TimeFilter[]).map((f) => (
+                  <TouchableOpacity
+                    key={f}
+                    style={[styles.timeChip, timeFilter === f && styles.timeChipActive]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      setTimeFilter(f);
+                    }}
+                  >
+                    <Text style={[styles.timeChipText, timeFilter === f && styles.timeChipTextActive]}>
+                      {f}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
 
             {/* Month Navigator Bar (visible when timeFilter is Month) */}
@@ -1077,8 +1087,10 @@ export const WealthScreen: React.FC = () => {
         {activeTab === 'Accounts' && (
           <View style={styles.tabContent}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Linked Accounts & Cards</Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={styles.sectionHeaderTitleWrap}>
+                <Text style={styles.sectionTitle}>Linked Accounts & Cards</Text>
+              </View>
+              <View style={styles.sectionHeaderActionsWrap}>
                 <TouchableOpacity
                   style={[
                     styles.smallAddBtn,
@@ -1091,7 +1103,7 @@ export const WealthScreen: React.FC = () => {
                   onPress={() => setSelfTransferModalVisible(true)}
                 >
                   <Ionicons name="swap-horizontal" size={14} color="#38BDF8" />
-                  <Text style={[styles.smallAddBtnText, { color: '#38BDF8' }]}>ATM / Transfer</Text>
+                  <Text style={[styles.smallAddBtnText, { color: '#38BDF8' }]}>Transfer</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1231,14 +1243,18 @@ export const WealthScreen: React.FC = () => {
 
             {/* Budgets Section */}
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Category Spending Budgets</Text>
-              <TouchableOpacity
-                style={styles.smallAddBtn}
-                onPress={() => setAddBudgetGoalModalVisible(true)}
-              >
-                <Ionicons name="add" size={16} color="#FFFFFF" />
-                <Text style={styles.smallAddBtnText}>+ Salary & Plan</Text>
-              </TouchableOpacity>
+              <View style={styles.sectionHeaderTitleWrap}>
+                <Text style={styles.sectionTitle}>Category Spending Budgets</Text>
+              </View>
+              <View style={styles.sectionHeaderActionsWrap}>
+                <TouchableOpacity
+                  style={styles.smallAddBtn}
+                  onPress={() => setAddBudgetGoalModalVisible(true)}
+                >
+                  <Ionicons name="add" size={16} color="#FFFFFF" />
+                  <Text style={styles.smallAddBtnText}>+ Salary & Plan</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {budgets.length === 0 ? (
@@ -1294,11 +1310,11 @@ export const WealthScreen: React.FC = () => {
 
             {/* Savings Goals Section */}
             <View style={[styles.sectionHeaderRow, { marginTop: Spacing.xl }]}>
-              <View>
+              <View style={styles.sectionHeaderTitleWrap}>
                 <Text style={styles.sectionTitle}>Savings Goals & Milestones</Text>
                 <Text style={styles.sectionSubtitle}>Plan targets & calculate compound growth</Text>
               </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={styles.sectionHeaderActionsWrap}>
                 <TouchableOpacity
                   style={[styles.smallAddBtn, { backgroundColor: 'rgba(99, 102, 241, 0.25)', borderColor: '#6366F1' }]}
                   onPress={() => {
@@ -1378,17 +1394,19 @@ export const WealthScreen: React.FC = () => {
           <View style={styles.tabContent}>
             {/* Upcoming Bills & Subscriptions */}
             <View style={styles.sectionHeaderRow}>
-              <View>
+              <View style={styles.sectionHeaderTitleWrap}>
                 <Text style={styles.sectionTitle}>Upcoming Bills & Subscriptions</Text>
                 <Text style={styles.sectionSubtitle}>Recurring commitments & payment reminders</Text>
               </View>
-              <TouchableOpacity
-                style={styles.smallAddBtn}
-                onPress={() => setAddBillModalVisible(true)}
-              >
-                <Ionicons name="add" size={16} color="#FFFFFF" />
-                <Text style={styles.smallAddBtnText}>+ Bill</Text>
-              </TouchableOpacity>
+              <View style={styles.sectionHeaderActionsWrap}>
+                <TouchableOpacity
+                  style={styles.smallAddBtn}
+                  onPress={() => setAddBillModalVisible(true)}
+                >
+                  <Ionicons name="add" size={16} color="#FFFFFF" />
+                  <Text style={styles.smallAddBtnText}>+ Bill</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Subscriptions & OTT Audit Tracker */}
@@ -1483,19 +1501,21 @@ export const WealthScreen: React.FC = () => {
 
             {/* Loan & Vatti (Interest) Engine */}
             <View style={[styles.sectionHeaderRow, { marginTop: Spacing.xl }]}>
-              <View>
+              <View style={styles.sectionHeaderTitleWrap}>
                 <Text style={styles.sectionTitle}>Loan & Vatti (Interest) Engine</Text>
                 <Text style={styles.sectionSubtitle}>
                   Monthly Due: {money(totalMonthlyVattiDue)} • Total Debt: {money(totalOutstandingLoanPrincipal)}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={styles.smallAddBtn}
-                onPress={() => setAddLoanModalVisible(true)}
-              >
-                <Ionicons name="add" size={16} color="#FFFFFF" />
-                <Text style={styles.smallAddBtnText}>+ Loan</Text>
-              </TouchableOpacity>
+              <View style={styles.sectionHeaderActionsWrap}>
+                <TouchableOpacity
+                  style={styles.smallAddBtn}
+                  onPress={() => setAddLoanModalVisible(true)}
+                >
+                  <Ionicons name="add" size={16} color="#FFFFFF" />
+                  <Text style={styles.smallAddBtnText}>+ Loan</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {loans.length === 0 ? (
@@ -1570,19 +1590,21 @@ export const WealthScreen: React.FC = () => {
         {activeTab === 'Trips & Tours' && (
           <View style={styles.tabContent}>
             <View style={styles.sectionHeaderRow}>
-              <View>
+              <View style={styles.sectionHeaderTitleWrap}>
                 <Text style={styles.sectionTitle}>Trip & Tour Manager</Text>
                 <Text style={styles.sectionSubtitle}>
                   Petrol, Diesel, Toll, Driver Batta & Friends Split
                 </Text>
               </View>
-              <TouchableOpacity
-                style={styles.smallAddBtn}
-                onPress={() => setAddTripModalVisible(true)}
-              >
-                <Ionicons name="add" size={16} color="#FFFFFF" />
-                <Text style={styles.smallAddBtnText}>+ Plan Trip</Text>
-              </TouchableOpacity>
+              <View style={styles.sectionHeaderActionsWrap}>
+                <TouchableOpacity
+                  style={styles.smallAddBtn}
+                  onPress={() => setAddTripModalVisible(true)}
+                >
+                  <Ionicons name="add" size={16} color="#FFFFFF" />
+                  <Text style={styles.smallAddBtnText}>+ Plan Trip</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {trips.length === 0 ? (
@@ -1717,13 +1739,13 @@ export const WealthScreen: React.FC = () => {
         {activeTab === 'Friends Khata' && (
           <View style={styles.tabContent}>
             <View style={styles.sectionHeaderRow}>
-              <View>
+              <View style={styles.sectionHeaderTitleWrap}>
                 <Text style={styles.sectionTitle}>Friends Khata (கொடுத்தது / வாங்கியது)</Text>
                 <Text style={styles.sectionSubtitle}>
                   Track money lent to or borrowed from friends & family
                 </Text>
               </View>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
+              <View style={styles.sectionHeaderActionsWrap}>
                 <TouchableOpacity
                   style={[styles.smallAddBtn, { backgroundColor: '#EF4444' }]}
                   onPress={() => {
@@ -1890,19 +1912,21 @@ export const WealthScreen: React.FC = () => {
           <View style={styles.tabContent}>
             {/* Header */}
             <View style={styles.sectionHeaderRow}>
-              <View>
+              <View style={styles.sectionHeaderTitleWrap}>
                 <Text style={styles.sectionTitle}>Purpose Savings Pots</Text>
                 <Text style={styles.sectionSubtitle}>
                   Health Reserve 🏥, Emergency 🛡️, Trip Savings 🏖️
                 </Text>
               </View>
-              <TouchableOpacity
-                style={[styles.smallAddBtn, { backgroundColor: '#10B981' }]}
-                onPress={() => setAddSavingsPotModalVisible(true)}
-              >
-                <Ionicons name="add" size={16} color="#FFFFFF" />
-                <Text style={styles.smallAddBtnText}>+ Create Pot</Text>
-              </TouchableOpacity>
+              <View style={styles.sectionHeaderActionsWrap}>
+                <TouchableOpacity
+                  style={[styles.smallAddBtn, { backgroundColor: '#10B981' }]}
+                  onPress={() => setAddSavingsPotModalVisible(true)}
+                >
+                  <Ionicons name="add" size={16} color="#FFFFFF" />
+                  <Text style={styles.smallAddBtnText}>+ Create Pot</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Total In Pots Hero Card */}
@@ -1994,19 +2018,21 @@ export const WealthScreen: React.FC = () => {
 
             {/* Gold Assets Section */}
             <View style={[styles.sectionHeaderRow, { marginTop: Spacing.xl }]}>
-              <View>
+              <View style={styles.sectionHeaderTitleWrap}>
                 <Text style={styles.sectionTitle}>Physical Gold Portfolio</Text>
                 <Text style={styles.sectionSubtitle}>
                   {totalGoldSovereigns} Sovereigns • Market Valuation: {money(totalGoldNetWorth)}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={styles.smallAddBtn}
-                onPress={() => setAddGoldModalVisible(true)}
-              >
-                <Ionicons name="sparkles" size={14} color={Colors.gold} />
-                <Text style={styles.smallAddBtnText}>+ Gold</Text>
-              </TouchableOpacity>
+              <View style={styles.sectionHeaderActionsWrap}>
+                <TouchableOpacity
+                  style={styles.smallAddBtn}
+                  onPress={() => setAddGoldModalVisible(true)}
+                >
+                  <Ionicons name="sparkles" size={14} color={Colors.gold} />
+                  <Text style={styles.smallAddBtnText}>+ Gold</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {goldItems.length === 0 ? (
@@ -2121,13 +2147,24 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    paddingBottom: 90,
+    paddingBottom: 150,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
+    gap: 8,
+  },
+  headerTitleWrap: {
+    flex: 1,
+    marginRight: 6,
+  },
+  headerActionsWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
   },
   screenTitle: {
     fontSize: 22,
@@ -2146,10 +2183,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
     borderWidth: 1,
     borderColor: '#F59E0B',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
     borderRadius: Radii.full,
-    gap: 6,
+    gap: 4,
   },
   aiButtonText: {
     fontSize: 12,
@@ -2215,10 +2252,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 2,
     borderRadius: Radii.lg,
     borderWidth: 1,
-    gap: 4,
+    gap: 3,
   },
   quickActionText: {
     fontSize: 11,
@@ -2228,6 +2266,9 @@ const styles = StyleSheet.create({
   // Nav Tabs
   tabScroll: {
     marginBottom: Spacing.lg,
+  },
+  tabScrollContent: {
+    paddingRight: Spacing.xl,
   },
   navTabChip: {
     paddingHorizontal: 14,
@@ -2319,6 +2360,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: Spacing.sm,
     marginBottom: 8,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sectionHeaderTitleWrap: {
+    flex: 1,
+    minWidth: 150,
+    marginRight: 6,
+  },
+  sectionHeaderActionsWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
   },
   sectionTitle: {
     fontSize: 15,
@@ -2384,11 +2438,18 @@ const styles = StyleSheet.create({
   },
 
   // Transactions
-  txHeaderRow: {
+  txHeaderCol: {
+    marginTop: Spacing.md,
+    marginBottom: 6,
+  },
+  txHeaderTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: Spacing.md,
+    marginBottom: 8,
+  },
+  timeFilterScroll: {
+    marginBottom: 4,
   },
   exportCsvBtn: {
     flexDirection: 'row',

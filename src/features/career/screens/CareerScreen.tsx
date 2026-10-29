@@ -269,17 +269,17 @@ export const CareerScreen: React.FC = () => {
         {/* TOP HEADER & ANALYTICS BANNER */}
         {/* ========================================================= */}
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerTitleWrap}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.screenTitle}>CareerPilot OS</Text>
+              <Text style={styles.screenTitle} numberOfLines={1}>CareerPilot OS</Text>
               <Badge label="AUTO-APPLY READY" variant="primary" />
             </View>
-            <Text style={styles.screenSubtitle}>
+            <Text style={styles.screenSubtitle} numberOfLines={1}>
               {profile.name} • {profile.targetRole}
             </Text>
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <View style={styles.headerActionsWrap}>
             <TouchableOpacity
               style={styles.headerExportBtn}
               onPress={handleExportPipelineCSV}
@@ -829,13 +829,24 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    paddingBottom: 90,
+    paddingBottom: 150,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.md,
+    gap: 8,
+  },
+  headerTitleWrap: {
+    flex: 1,
+    marginRight: 6,
+  },
+  headerActionsWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
   },
   screenTitle: {
     fontSize: 22,
