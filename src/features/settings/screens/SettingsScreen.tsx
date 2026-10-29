@@ -26,6 +26,8 @@ import { useAiConfigStore } from '@/core/state/ai-config-store';
 import { ApiKeyModal } from '@/core/components/ApiKeyModal';
 import { TermsPrivacyModal } from '@/features/auth/components/TermsPrivacyModal';
 import { BackupService } from '@/core/utils/backup-service';
+import { useVaultStore } from '@/features/vault/state/vault-store';
+import { KeePassVaultModal } from '@/features/vault/components/KeePassVaultModal';
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -40,6 +42,10 @@ export const SettingsScreen: React.FC = () => {
   const groqKey = useAiConfigStore((s) => s.groqKey);
   const [apiKeyModalVisible, setApiKeyModalVisible] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
+  const [vaultModalVisible, setVaultModalVisible] = useState(false);
+
+  const vaultEntries = useVaultStore((s) => s.entries);
+  const isVaultUnlocked = useVaultStore((s) => s.isUnlocked);
 
   // Change PIN Modal
   const [pinModalVisible, setPinModalVisible] = useState(false);
@@ -319,7 +325,51 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </GlassCard>
 
-        {/* 5. Cloud Backup & Restore */}
+        {/* 5. KeePassDX Password & 2FA Vault */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>KeePassDX Password & 2FA Vault</Text>
+        </View>
+        <GlassCard style={styles.sectionCard}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setVaultModalVisible(true);
+            }}
+          >
+            <View style={styles.iconCircleIndigo}>
+              <Ionicons name="shield-checkmark" size={18} color="#818CF8" />
+            </View>
+            <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.settingLabel}>Master Security Vault</Text>
+                <Badge
+                  label={isVaultUnlocked ? `${vaultEntries.length} Keys 🟢` : 'Locked 🔒'}
+                  variant={isVaultUnlocked ? 'primary' : 'gold'}
+                />
+              </View>
+              <Text style={styles.settingSub}>
+                Zero-knowledge AES-256, KeePassDX generator, 30s auto-purge & RFC 6238 TOTP
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.actionBtnSmallIndigo}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+              setVaultModalVisible(true);
+            }}
+          >
+            <Ionicons name="key" size={14} color="#FFFFFF" />
+            <Text style={styles.actionBtnSmallIndigoText}>Open KeePassDX Vault 🛡️</Text>
+          </TouchableOpacity>
+        </GlassCard>
+
+        {/* 6. Cloud Backup & Restore */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Encrypted Backup & Portability</Text>
         </View>
@@ -517,6 +567,12 @@ export const SettingsScreen: React.FC = () => {
         visible={termsModalVisible}
         onClose={() => setTermsModalVisible(false)}
       />
+
+      {/* KeePassDX Master Vault Modal */}
+      <KeePassVaultModal
+        visible={vaultModalVisible}
+        onClose={() => setVaultModalVisible(false)}
+      />
     </ScreenContainer>
   );
 };
@@ -699,6 +755,29 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(234, 179, 8, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconCircleIndigo: {
+    width: 34,
+    height: 34,
+    borderRadius: Radii.full,
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionBtnSmallIndigo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6366F1',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: Radii.md,
+    gap: 6,
+  },
+  actionBtnSmallIndigoText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   dangerZoneRow: {
     flexDirection: 'row',
