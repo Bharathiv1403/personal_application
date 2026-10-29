@@ -55,8 +55,8 @@ export const RootNavigator: React.FC = () => {
       } else if (nextState === 'active') {
         if (backgroundTimeRef.current) {
           const elapsed = (Date.now() - backgroundTimeRef.current) / 1000;
-          // Auto-lock vault if app was in background for 45+ seconds
-          if (elapsed >= 45 && useAuthStore.getState().isAuthenticated) {
+          // Auto-lock vault if app was in background for 5+ minutes (300 seconds)
+          if (elapsed >= 300 && useAuthStore.getState().isAuthenticated) {
             useAuthStore.getState().signOut();
           }
         }

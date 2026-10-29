@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
+import * as Clipboard from 'expo-clipboard';
 import { useVaultStore } from '../state/vault-store';
 import { VaultEntry, VaultGroup } from '../types';
 import { VaultCryptoService } from '../utils/vault-crypto';
@@ -161,9 +162,36 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
   };
 
   // Import Backup
-  const handleImportBackup = () => {
-    Alert.prompt
-      ? Alert.prompt(
+  const handleImportBackup = async () => {
+    try {
+      const clipboardText = await Clipboard.getStringAsync();
+      const hasClipboardJson = clipboardText && (clipboardText.trim().startsWith('{') || clipboardText.trim().startsWith('['));
+
+      if (hasClipboardJson) {
+        Alert.alert(
+          'Import KeePassDX Backup',
+          'Found backup data on your clipboard! Do you want to import it now?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Import Clipboard Data',
+              onPress: () => {
+                const imported = VaultCryptoService.importVaultJSON(clipboardText);
+                if (imported.length > 0) {
+                  const count = importEntries(imported);
+                  Alert.alert('Import Complete 🎉', `Imported ${count} new vault entries successfully.`);
+                } else {
+                  Alert.alert('Import Error', 'Invalid backup format or no entries found in clipboard data.');
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      if (Platform.OS === 'ios' && Alert.prompt) {
+        Alert.prompt(
           'Import KeePassDX Backup',
           'Paste your exported JSON vault string here:',
           [
@@ -183,8 +211,16 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
             },
           ],
           'plain-text'
-        )
-      : Alert.alert('Import Backup', 'Paste your JSON data into Settings -> Restore Encrypted Backup.');
+        );
+      } else {
+        Alert.alert(
+          'Import KeePassDX Backup',
+          'Copy your exported KeePassDX JSON backup text to your clipboard first, then tap this button to import it with one tap.'
+        );
+      }
+    } catch {
+      Alert.alert('Import Error', 'Unable to access clipboard.');
+    }
   };
 
   // Filter entries

@@ -221,7 +221,7 @@ export const WealthScreen: React.FC = () => {
 
   // Overall Monthly Budget
   const overallBudget = budgets.find((b) => !b.categoryId)?.amount || 50000;
-  const budgetUsedPercent = Math.min(100, Math.round((totalExpense / overallBudget) * 100));
+  const budgetUsedPercent = overallBudget > 0 ? Math.min(100, Math.round((totalExpense / overallBudget) * 100)) : 0;
 
   // Category Spend Distribution
   const categorySpendMap = useMemo(() => {
@@ -635,6 +635,7 @@ export const WealthScreen: React.FC = () => {
           <View style={styles.headerActionsWrap}>
             <TouchableOpacity
               style={[styles.stealthToggleBtn, isStealthMode && styles.stealthToggleBtnActive]}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
                 toggleStealthMode();
@@ -1267,9 +1268,9 @@ export const WealthScreen: React.FC = () => {
               </View>
             ) : (
               budgets.map((b) => {
-              const spent = b.categoryId ? categorySpendMap[b.categoryId] || 0 : totalExpense;
-              const percent = Math.min(100, Math.round((spent / b.amount) * 100));
-              const remaining = Math.max(0, b.amount - spent);
+                const spent = b.categoryId ? categorySpendMap[b.categoryId] || 0 : totalExpense;
+                const percent = b.amount > 0 ? Math.min(100, Math.round((spent / b.amount) * 100)) : 0;
+                const remaining = Math.max(0, b.amount - spent);
               const isOver = spent > b.amount;
 
               return (
@@ -1345,10 +1346,9 @@ export const WealthScreen: React.FC = () => {
               </View>
             ) : (
               savingsGoals.map((goal) => {
-              const percent = Math.min(
-                100,
-                Math.round((goal.currentAmount / goal.targetAmount) * 100)
-              );
+              const percent = goal.targetAmount > 0
+                ? Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100))
+                : 0;
 
               return (
                 <GlassCard key={goal.id} style={styles.goalCard}>
@@ -1949,10 +1949,9 @@ export const WealthScreen: React.FC = () => {
               </View>
             ) : (
               savingsGoals.map((pot) => {
-                const percent = Math.min(
-                  100,
-                  Math.round((pot.currentAmount / pot.targetAmount) * 100)
-                );
+                const percent = pot.targetAmount > 0
+                  ? Math.min(100, Math.round((pot.currentAmount / pot.targetAmount) * 100))
+                  : 0;
 
                 return (
                   <GlassCard key={pot.id} style={styles.potCard}>

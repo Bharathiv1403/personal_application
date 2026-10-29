@@ -204,7 +204,11 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
               <Text style={styles.modalTitle}>Monthly Salary & Expenses</Text>
               <Text style={styles.modalSubtitle}>{currentMonthName} • Budget Tracker</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Ionicons name="close" size={20} color={Colors.textMuted} />
             </TouchableOpacity>
           </View>
@@ -544,6 +548,7 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
                           <Text style={styles.expenseAmount}>-{formatINR(tx.amount)}</Text>
                           <TouchableOpacity
                             style={styles.deleteExpenseBtn}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             onPress={() => handleDeleteExpense(tx.id, tx.title, tx.amount)}
                           >
                             <Ionicons name="trash-outline" size={14} color="#EF4444" />

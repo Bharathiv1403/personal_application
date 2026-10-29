@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -190,6 +190,7 @@ export const TodayScreen: React.FC = () => {
           <View style={styles.headerActionsWrap}>
             <TouchableOpacity
               style={styles.bellButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                 navigation.navigate('Settings');
@@ -200,6 +201,7 @@ export const TodayScreen: React.FC = () => {
 
             <TouchableOpacity
               style={styles.bellButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                 Alert.alert('Lock Vault 🔒', 'Lock your personal session?', [
@@ -213,6 +215,7 @@ export const TodayScreen: React.FC = () => {
 
             <TouchableOpacity
               style={styles.bellButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                 const alertMsg = activeLoan
@@ -243,7 +246,9 @@ export const TodayScreen: React.FC = () => {
               <Ionicons name="footsteps-outline" size={18} color={Colors.primary} />
             </View>
             <Text style={styles.metricValue}>{todaySteps.toLocaleString('en-IN')}</Text>
-            <Text style={styles.metricLabel}>Steps ({Math.min(100, Math.round((todaySteps / stepGoal) * 100))}%)</Text>
+            <Text style={styles.metricLabel}>
+              Steps ({Math.min(100, Math.round((todaySteps / (stepGoal || 10000)) * 100)) || 0}%)
+            </Text>
           </GlassCard>
 
           <GlassCard style={styles.metricCard}>
@@ -251,7 +256,9 @@ export const TodayScreen: React.FC = () => {
               <Ionicons name="water-outline" size={18} color={Colors.cyan} />
             </View>
             <Text style={styles.metricValue}>{(waterMl / 1000).toFixed(1)} L</Text>
-            <Text style={styles.metricLabel}>Water ({Math.min(100, Math.round((waterMl / waterGoal) * 100))}%)</Text>
+            <Text style={styles.metricLabel}>
+              Water ({Math.min(100, Math.round((waterMl / (waterGoal || 3000)) * 100)) || 0}%)
+            </Text>
           </GlassCard>
 
           <GlassCard style={styles.metricCard}>
@@ -338,6 +345,7 @@ export const TodayScreen: React.FC = () => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.taskDeleteBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 onPress={() => deleteTask(task.id)}
               >
                 <Ionicons name="trash-outline" size={16} color={Colors.textMuted} />
@@ -354,7 +362,10 @@ export const TodayScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={() => setIsAddTaskModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add Daily Priority</Text>
             <TextInput
@@ -380,7 +391,7 @@ export const TodayScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Vault Security & Backup Modal */}

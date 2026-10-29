@@ -78,7 +78,7 @@ export const AtsScannerModal: React.FC<AtsScannerModalProps> = ({ visible, onClo
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.modalOverlay}
@@ -91,7 +91,11 @@ export const AtsScannerModal: React.FC<AtsScannerModalProps> = ({ visible, onClo
                 <Text style={styles.sheetTitle}>ATS Resume Match Scanner</Text>
                 <Text style={styles.sheetSub}>Compare any Job Description against your profile</Text>
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.closeBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
                 <Ionicons name="close" size={20} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>

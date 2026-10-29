@@ -29,7 +29,7 @@ export const InHandSalaryModal: React.FC<InHandSalaryModalProps> = ({ visible, o
   const { monthlyGross, monthlyEPF, monthlyTax, monthlyInHand } = calculateInHandSalary(ctcLpa);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.modalOverlay}
@@ -41,7 +41,11 @@ export const InHandSalaryModal: React.FC<InHandSalaryModalProps> = ({ visible, o
               <Text style={styles.sheetTitle}>In-Hand CTC Salary Calculator</Text>
               <Text style={styles.sheetSub}>Indian New Tax Regime & Monthly Bank Credit</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Ionicons name="close" size={20} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>

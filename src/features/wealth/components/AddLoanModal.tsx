@@ -55,7 +55,7 @@ export const AddLoanModal: React.FC<AddLoanModalProps> = ({ visible, onClose }) 
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.modalOverlay}
@@ -67,7 +67,11 @@ export const AddLoanModal: React.FC<AddLoanModalProps> = ({ visible, onClose }) 
               <Text style={styles.sheetTitle}>New Loan & Vatti Tracker</Text>
               <Text style={styles.sheetSub}>Record borrowed money & interest schedule</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Ionicons name="close" size={20} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>

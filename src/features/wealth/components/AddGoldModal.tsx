@@ -52,7 +52,7 @@ export const AddGoldModal: React.FC<AddGoldModalProps> = ({ visible, onClose }) 
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.modalOverlay}
@@ -64,7 +64,11 @@ export const AddGoldModal: React.FC<AddGoldModalProps> = ({ visible, onClose }) 
               <Text style={styles.sheetTitle}>Add Gold Ornament / Asset</Text>
               <Text style={styles.sheetSub}>Record gold holdings & live estimated net worth</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Ionicons name="close" size={20} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>

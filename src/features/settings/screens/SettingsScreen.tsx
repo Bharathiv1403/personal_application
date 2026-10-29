@@ -9,10 +9,13 @@ import {
   Switch,
   TextInput,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as SecureStore from 'expo-secure-store';
+import * as Clipboard from 'expo-clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { ScreenContainer } from '@/core/design-system/primitives/ScreenContainer';
@@ -450,8 +453,16 @@ export const SettingsScreen: React.FC = () => {
       </ScrollView>
 
       {/* Change PIN Modal */}
-      <Modal visible={pinModalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <Modal
+        visible={pinModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setPinModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Change 4-Digit Security PIN</Text>
             <TextInput
@@ -483,12 +494,20 @@ export const SettingsScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Edit Career Details Modal */}
-      <Modal visible={editCareerVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <Modal
+        visible={editCareerVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setEditCareerVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Career Preferences</Text>
             <TextInput
@@ -528,14 +547,40 @@ export const SettingsScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Restore Modal */}
-      <Modal visible={restoreModalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <Modal
+        visible={restoreModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setRestoreModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Paste Backup JSON Data</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }}>
+              <Text style={styles.modalTitle}>Paste Backup JSON Data</Text>
+              <TouchableOpacity
+                onPress={async () => {
+                  try {
+                    const text = await Clipboard.getStringAsync();
+                    if (text) {
+                      setRestoreJson(text);
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                    }
+                  } catch {}
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4 }}
+              >
+                <Ionicons name="clipboard-outline" size={16} color={Colors.primary} />
+                <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '600' }}>Paste</Text>
+              </TouchableOpacity>
+            </View>
             <TextInput
               style={[styles.pinInput, { minHeight: 120, textAlignVertical: 'top' }]}
               placeholder="Paste encrypted JSON content here..."
@@ -553,7 +598,7 @@ export const SettingsScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Free AI Key Setup Modal */}

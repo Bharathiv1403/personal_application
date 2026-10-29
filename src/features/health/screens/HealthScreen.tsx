@@ -63,7 +63,8 @@ export const HealthScreen: React.FC = () => {
     addWater(amount);
   };
 
-  const percentGoal = Math.min(100, Math.round((todaySteps / stepGoal) * 100));
+  const safeStepGoal = stepGoal > 0 ? stepGoal : 10000;
+  const percentGoal = Math.min(100, Math.round((todaySteps / safeStepGoal) * 100)) || 0;
 
   return (
     <ScreenContainer>
@@ -137,7 +138,7 @@ export const HealthScreen: React.FC = () => {
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>7-Day Movement Consistency</Text>
             <Text style={styles.chartAvgText}>
-              Avg: {Math.round(weeklyHistory.reduce((a, b) => a + b.steps, 0) / weeklyHistory.length).toLocaleString('en-IN')} steps
+              Avg: {Math.round(weeklyHistory.reduce((a, b) => a + b.steps, 0) / (weeklyHistory.length || 1)).toLocaleString('en-IN')} steps
             </Text>
           </View>
 
@@ -170,12 +171,12 @@ export const HealthScreen: React.FC = () => {
             <View>
               <Text style={styles.waterTitle}>Hydration Tracker 💧</Text>
               <Text style={styles.waterSubtitle}>
-                {waterMl} ml / {waterGoal} ml ({Math.round((waterMl / waterGoal) * 100)}%)
+                {waterMl} ml / {waterGoal || 3000} ml ({waterGoal > 0 ? Math.min(100, Math.round((waterMl / waterGoal) * 100)) : 0}%)
               </Text>
             </View>
             <Badge
-              label={waterMl >= waterGoal ? 'Goal Met!' : 'In Progress'}
-              variant={waterMl >= waterGoal ? 'primary' : 'cyan'}
+              label={waterMl >= (waterGoal || 3000) ? 'Goal Met!' : 'In Progress'}
+              variant={waterMl >= (waterGoal || 3000) ? 'primary' : 'cyan'}
             />
           </View>
 
@@ -184,7 +185,7 @@ export const HealthScreen: React.FC = () => {
             <View
               style={[
                 styles.waterBarFill,
-                { width: `${Math.min(100, (waterMl / waterGoal) * 100)}%` },
+                { width: `${waterGoal > 0 ? Math.min(100, (waterMl / waterGoal) * 100) : 0}%` },
               ]}
             />
           </View>

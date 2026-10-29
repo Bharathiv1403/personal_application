@@ -47,7 +47,7 @@ export const PartRepayModal: React.FC<PartRepayModalProps> = ({ visible, loan, o
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.modalOverlay}
@@ -61,7 +61,11 @@ export const PartRepayModal: React.FC<PartRepayModalProps> = ({ visible, loan, o
                 Reduce debt for {loan.lenderName} & lower next month's vatti
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Ionicons name="close" size={20} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>

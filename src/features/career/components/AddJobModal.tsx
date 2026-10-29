@@ -73,7 +73,7 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) =>
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.modalOverlay}
@@ -86,7 +86,11 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) =>
                 <Text style={styles.sheetTitle}>Track New Job Application</Text>
                 <Text style={styles.sheetSub}>Add company to your personal ATS pipeline</Text>
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.closeBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
                 <Ionicons name="close" size={20} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
