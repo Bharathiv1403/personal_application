@@ -11,6 +11,8 @@ import { GoogleAuthService } from '@/core/utils/google-auth';
 export const SignInScreen: React.FC = () => {
   const [enteredPin, setEnteredPin] = useState('');
   const [errorShake, setErrorShake] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
 
   const user = useAuthStore((s) => s.user);
   const isBiometricSupported = useAuthStore((s) => s.isBiometricSupported);
@@ -26,6 +28,8 @@ export const SignInScreen: React.FC = () => {
     if (googleUser) {
       const success = await signInWithGoogle(googleUser);
       if (success) {
+        setFailedAttempts(0);
+        setLockoutSeconds(0);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       }
     }
@@ -33,12 +37,31 @@ export const SignInScreen: React.FC = () => {
 
   // Auto-prompt biometrics if supported and enabled
   useEffect(() => {
-    if (isBiometricSupported && isBiometricEnabled) {
+    if (isBiometricSupported && isBiometricEnabled && lockoutSeconds === 0) {
       signInWithBiometrics();
     }
-  }, [isBiometricSupported, isBiometricEnabled]);
+  }, [isBiometricSupported, isBiometricEnabled, lockoutSeconds]);
+
+  // Lockout countdown timer
+  useEffect(() => {
+    if (lockoutSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setLockoutSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutSeconds]);
 
   const handleKeyPress = async (val: string) => {
+    if (lockoutSeconds > 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      return;
+    }
     if (enteredPin.length >= 4) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
@@ -48,10 +71,22 @@ export const SignInScreen: React.FC = () => {
     if (newPin.length === 4) {
       const isValid = await signInWithPin(newPin);
       if (isValid) {
+        setFailedAttempts(0);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
         setErrorShake(true);
+        const nextFailed = failedAttempts + 1;
+        setFailedAttempts(nextFailed);
+
+        if (nextFailed >= 5) {
+          setLockoutSeconds(30);
+          Alert.alert(
+            'Security Lockout 🔒',
+            'Too many incorrect PIN attempts. Vault is temporarily locked for 30 seconds for your protection.'
+          );
+        }
+
         setTimeout(() => {
           setEnteredPin('');
           setErrorShake(false);
@@ -95,7 +130,16 @@ export const SignInScreen: React.FC = () => {
           />
           <Text style={styles.greeting}>Welcome back,</Text>
           <Text style={styles.userName}>{user?.name || 'Vault Master'} 👋</Text>
-          <Text style={styles.subtext}>Enter your 4-digit PIN to access your OS</Text>
+          {lockoutSeconds > 0 ? (
+            <View style={styles.lockoutBanner}>
+              <Ionicons name="lock-closed" size={14} color="#EF4444" />
+              <Text style={styles.lockoutText}>
+                Security lockout active. Try again in {lockoutSeconds}s
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.subtext}>Enter your 4-digit PIN to access your OS</Text>
+          )}
         </View>
 
         {/* PIN Indicators */}
@@ -116,7 +160,10 @@ export const SignInScreen: React.FC = () => {
         </View>
 
         {/* Numeric Keypad */}
-        <View style={styles.keypad}>
+        <View
+          style={[styles.keypad, lockoutSeconds > 0 && { opacity: 0.3 }]}
+          pointerEvents={lockoutSeconds > 0 ? 'none' : 'auto'}
+        >
           {[['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9']].map((row, rIdx) => (
             <View key={rIdx} style={styles.keypadRow}>
               {row.map((digit) => (
@@ -300,5 +347,22 @@ const styles = StyleSheet.create({
   forgotText: {
     fontSize: 12,
     color: Colors.textMuted,
+  },
+  lockoutBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radii.full,
+    marginTop: 6,
+  },
+  lockoutText: {
+    fontSize: 12,
+    color: '#F87171',
+    fontWeight: '600',
   },
 });

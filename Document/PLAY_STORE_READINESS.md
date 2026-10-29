@@ -10,17 +10,17 @@
 ## 1. Google Play Console Core Identity & Configuration
 
 ### 1.1 Package Name / Application ID
-- **Production Package Name:** `com.bharathi.personalapp` (or custom reverse-domain).
+- **Production Package Name:** `com.aayon.app` (or custom reverse-domain).
 - Must be unique, registered once on Google Play Console, and permanent across all updates.
 
 ### 1.2 Versioning Strategy
-- **`versionName` (Semantic Versioning):** `1.0.0` (visible to users on the Play Store).
+- **`versionName` (Semantic Versioning):** `1.1.0` (visible to users on the Play Store).
 - **`versionCode` (Integer for Play Console):** `1`, `2`, `3`... (must increment strictly by +1 for every release upload; Play Console rejects identical or lower version codes).
-- Configured in `app.config.js`:
-  ```javascript
-  android: {
-    package: "com.bharathi.personalapp",
-    versionCode: 1,
+- Configured in `app.json`:
+  ```json
+  "android": {
+    "package": "com.aayon.app",
+    "versionCode": 2,
     adaptiveIcon: {
       foregroundImage: "./assets/brand/adaptive-icon.png",
       backgroundColor: "#09090B",
@@ -180,11 +180,10 @@ graph LR
 - **`google-services.json` Setup:**
   Downloaded from Firebase Console (`Project Settings > General > Your Apps > Android App`) and placed in project root (ignored in `.gitignore`, with template `google-services.json.example`).
 - **`app.config.js` Linkage:**
-  ```javascript
-  android: {
-    package: "com.bharathi.personalapp",
-    googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
-    permissions: [
+  ```json
+  "android": {
+    "package": "com.aayon.app",
+    "permissions": [
       "android.permission.ACTIVITY_RECOGNITION",
       "android.permission.POST_NOTIFICATIONS",
       "android.permission.USE_BIOMETRIC"

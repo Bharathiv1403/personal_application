@@ -1,5 +1,3 @@
-import { BHARATHI_CANDIDATE_PROFILE } from '../data/candidate-profile';
-
 export interface DiscoveredJobItem {
   id: string;
   title: string;
@@ -15,7 +13,7 @@ export interface DiscoveredJobItem {
 
 export class JobDiscoveryService {
   /**
-   * Calculates ATS match score against Bharathi's resume skills
+   * Calculates ATS match score against target tech resume skills
    */
   static calculateMatchScore(title: string, tags: string[] = [], description = ''): number {
     const text = `${title} ${tags.join(' ')} ${description}`.toLowerCase();

@@ -13,6 +13,7 @@ import { formatINR } from '@/core/utils/currency';
 import { useHealthStore } from '@/features/health/state/health-store';
 import { useWealthStore } from '@/features/wealth/state/wealth-store';
 import { useJobStore } from '@/features/career/state/job-store';
+import { useCandidateProfileStore } from '@/features/career/state/candidate-profile-store';
 import { WeatherService, WeatherData } from '@/core/utils/weather-service';
 import { PedometerService } from '@/core/native-bridges/pedometer-adapter';
 import { AIService } from '@/core/utils/ai-service';
@@ -47,7 +48,10 @@ export const TodayScreen: React.FC = () => {
 
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
-  const userName = user?.name ? user.name.split(' ')[0] : 'Bharathi';
+  const userName = user?.name ? user.name.split(' ')[0] : 'User';
+
+  const preferredLocations = useCandidateProfileStore((s) => s.preferences.preferredLocations);
+  const userCity = preferredLocations && preferredLocations.length > 0 ? preferredLocations[0] : 'Chennai';
 
   // Dynamic Date and Greeting
   const getGreeting = () => {
@@ -77,8 +81,8 @@ export const TodayScreen: React.FC = () => {
 
   // Load weather, pedometer, and persistent tasks on mount
   useEffect(() => {
-    // 1. Fetch live weather
-    WeatherService.getCurrentWeather('Chennai').then((res) => {
+    // 1. Fetch live weather for user's city
+    WeatherService.getCurrentWeather(userCity).then((res) => {
       if (res) setWeather(res);
     });
 

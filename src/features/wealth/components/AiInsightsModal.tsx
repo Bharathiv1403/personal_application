@@ -65,7 +65,7 @@ export const AiInsightsModal: React.FC<Props> = ({ visible, onClose }) => {
 
     const pendingBillsCount = bills.filter((b) => !b.isPaid).length;
 
-    const prompt = `You are AAYON Executive AI Financial Advisor. Analyze Bharathi's personal finances and provide an energetic, high-value financial review.
+    const prompt = `You are AAYON Executive AI Financial Advisor. Analyze the user's personal finances and provide an energetic, high-value financial review.
 Metrics:
 - Total Bank/Cash Balance: ${formatINR(totalBalance)}
 - This Month Inflow (Income): ${formatINR(totalIncome)}

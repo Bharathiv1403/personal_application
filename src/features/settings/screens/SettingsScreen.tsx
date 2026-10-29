@@ -22,6 +22,9 @@ import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
 import { useAuthStore } from '@/features/auth/state/auth-store';
 import { useCandidateProfileStore } from '@/features/career/state/candidate-profile-store';
+import { useAiConfigStore } from '@/core/state/ai-config-store';
+import { ApiKeyModal } from '@/core/components/ApiKeyModal';
+import { TermsPrivacyModal } from '@/features/auth/components/TermsPrivacyModal';
 import { BackupService } from '@/core/utils/backup-service';
 
 export const SettingsScreen: React.FC = () => {
@@ -33,6 +36,10 @@ export const SettingsScreen: React.FC = () => {
   const resetAccount = useAuthStore((s) => s.resetAccount);
 
   const profile = useCandidateProfileStore();
+  const geminiKey = useAiConfigStore((s) => s.geminiKey);
+  const groqKey = useAiConfigStore((s) => s.groqKey);
+  const [apiKeyModalVisible, setApiKeyModalVisible] = useState(false);
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
 
   // Change PIN Modal
   const [pinModalVisible, setPinModalVisible] = useState(false);
@@ -143,12 +150,12 @@ export const SettingsScreen: React.FC = () => {
           <View style={styles.profileHeader}>
             <View style={styles.avatarWrap}>
               <Text style={styles.avatarText}>
-                {user?.name ? user.name.charAt(0).toUpperCase() : 'B'}
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </Text>
             </View>
             <View style={{ flex: 1, marginLeft: Spacing.md }}>
-              <Text style={styles.profileName}>{user?.name || 'Bharathi V'}</Text>
-              <Text style={styles.profileEmail}>{user?.email || 'bharathivragav206@gmail.com'}</Text>
+              <Text style={styles.profileName}>{user?.name || 'Guest User'}</Text>
+              <Text style={styles.profileEmail}>{user?.email || 'user@example.com'}</Text>
               <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
                 <Badge
                   label={user?.authProvider === 'google' ? 'GOOGLE ACCOUNT' : 'LOCAL VAULT'}
@@ -225,6 +232,62 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </GlassCard>
 
+        {/* AI Intelligence & Free API Keys */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>AI Intelligence & API Keys</Text>
+        </View>
+        <GlassCard style={styles.sectionCard}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => setApiKeyModalVisible(true)}
+          >
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.settingLabel}>Google Gemini (100% Free)</Text>
+                <Badge
+                  label={geminiKey ? 'Active 🟢' : 'Missing ⚠️'}
+                  variant={geminiKey ? 'primary' : 'gold'}
+                />
+              </View>
+              <Text style={styles.settingSub}>
+                {geminiKey ? 'Google AI Studio key active & ready' : 'Tap to add your free key (no credit card)'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => setApiKeyModalVisible(true)}
+          >
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.settingLabel}>Groq Cloud (Ultra-Fast)</Text>
+                <Badge
+                  label={groqKey ? 'Active 🟢' : 'Optional'}
+                  variant={groqKey ? 'cyan' : 'neutral'}
+                />
+              </View>
+              <Text style={styles.settingSub}>
+                {groqKey ? 'Groq Llama-3.1 engine active' : 'Optional high-speed inference key'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.actionBtnSmall}
+            onPress={() => setApiKeyModalVisible(true)}
+          >
+            <Ionicons name="key-outline" size={14} color="#FFFFFF" />
+            <Text style={styles.actionBtnSmallText}>Configure / Test Free API Keys 🔑</Text>
+          </TouchableOpacity>
+        </GlassCard>
+
         {/* 4. Hardware Security & Biometrics */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Security & Biometrics</Text>
@@ -291,13 +354,21 @@ export const SettingsScreen: React.FC = () => {
         <GlassCard style={styles.sectionCard}>
           <View style={styles.settingRow}>
             <Text style={styles.settingLabel}>App Version</Text>
-            <Text style={styles.settingValue}>AAYON v1.0.0 (Build 1)</Text>
+            <Text style={styles.settingValue}>AAYON v1.1.0 (Build 2)</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.settingRow}>
             <Text style={styles.settingLabel}>Storage Model</Text>
             <Text style={styles.settingValue}>100% On-Device Encrypted Vault</Text>
           </View>
+          <View style={styles.divider} />
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => setTermsModalVisible(true)}
+          >
+            <Text style={styles.settingLabel}>Privacy Policy & Terms</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
         </GlassCard>
 
         <View style={styles.dangerZoneRow}>
@@ -434,6 +505,18 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Free AI Key Setup Modal */}
+      <ApiKeyModal
+        visible={apiKeyModalVisible}
+        onClose={() => setApiKeyModalVisible(false)}
+      />
+
+      {/* Privacy Policy & Terms Modal */}
+      <TermsPrivacyModal
+        visible={termsModalVisible}
+        onClose={() => setTermsModalVisible(false)}
+      />
     </ScreenContainer>
   );
 };

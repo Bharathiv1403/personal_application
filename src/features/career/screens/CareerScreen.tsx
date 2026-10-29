@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -27,8 +28,14 @@ import { AtsScannerModal } from '../components/AtsScannerModal';
 import { InHandSalaryModal } from '../components/InHandSalaryModal';
 import { AiCoverLetterModal } from '../components/AiCoverLetterModal';
 import { InterviewCoachModal } from '../components/InterviewCoachModal';
+import { JobDetailModal } from '../components/JobDetailModal';
+import { OutreachGeneratorModal, OutreachType } from '../components/OutreachGeneratorModal';
+import { OfferNegotiatorModal } from '../components/OfferNegotiatorModal';
+import { useAiConfigStore } from '@/core/state/ai-config-store';
+import { AIService } from '@/core/utils/ai-service';
+import { ApiKeyModal } from '@/core/components/ApiKeyModal';
 
-type NavTab = 'Jobs' | 'Tracker' | 'Profile' | 'Preferences' | 'Answer Bank';
+type NavTab = 'Jobs' | 'Tracker';
 
 export const CareerScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>('Jobs');
@@ -36,6 +43,10 @@ export const CareerScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals state
+  const [apiKeyModalVisible, setApiKeyModalVisible] = useState(false);
+  const isAiConfigured = useAiConfigStore((s) => s.isConfigured);
+  const hasKey = isAiConfigured || AIService.hasConfiguredKey();
+
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [preferencesModalVisible, setPreferencesModalVisible] = useState(false);
   const [answerBankModalVisible, setAnswerBankModalVisible] = useState(false);
@@ -48,6 +59,14 @@ export const CareerScreen: React.FC = () => {
   const [coverLetterModalVisible, setCoverLetterModalVisible] = useState(false);
   const [coachModalVisible, setCoachModalVisible] = useState(false);
   const [selectedJobForLetter, setSelectedJobForLetter] = useState<JobApplicationItem | null>(null);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedJobForDetail, setSelectedJobForDetail] = useState<JobApplicationItem | null>(null);
+
+  // New Modals: Outreach & Offer Negotiator
+  const [outreachModalVisible, setOutreachModalVisible] = useState(false);
+  const [selectedJobForOutreach, setSelectedJobForOutreach] = useState<JobApplicationItem | null>(null);
+  const [outreachDefaultType, setOutreachDefaultType] = useState<OutreachType>('referral_request');
+  const [offerNegotiatorVisible, setOfferNegotiatorVisible] = useState(false);
 
   // Stores
   const jobs = useJobStore((s) => s.jobs);
@@ -108,11 +127,106 @@ export const CareerScreen: React.FC = () => {
     setCoverLetterModalVisible(true);
   };
 
-  const handleFollowUp = (company: string, recruiter?: string) => {
+  const handleOpenJobDetail = (job: JobApplicationItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setSelectedJobForDetail(job);
+    setDetailModalVisible(true);
+  };
+
+  const handleOpenOutreach = (job: JobApplicationItem, type: OutreachType = 'referral_request') => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setSelectedJobForOutreach(job);
+    setOutreachDefaultType(type);
+    setOutreachModalVisible(true);
+  };
+
+  const getApplicationAgeDays = (appliedDate?: string): number => {
+    if (!appliedDate) return 0;
+    const diff = Date.now() - new Date(appliedDate).getTime();
+    return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+  };
+
+  const handleExportPipelineCSV = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    const headers = [
+      'Company',
+      'Role',
+      'Stage',
+      'Applied Date',
+      'Location',
+      'Work Mode',
+      'CTC Min (LPA)',
+      'CTC Max (LPA)',
+      'ATS Match %',
+      'Recruiter',
+      'URL',
+    ];
+    const rows = jobs.map((j) => [
+      `"${j.companyName}"`,
+      `"${j.role}"`,
+      `"${j.stage.toUpperCase()}"`,
+      `"${j.appliedDate || ''}"`,
+      `"${j.location}"`,
+      `"${j.workMode}"`,
+      j.ctcMin,
+      j.ctcMax,
+      j.matchScore || '',
+      `"${j.recruiterName || ''}"`,
+      `"${j.url || ''}"`,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    try {
+      await Share.share({
+        message: csvContent,
+        title: 'CareerPilot_Pipeline_Export.csv',
+      });
+    } catch {
+      Alert.alert('Export Failed', 'Unable to share CSV export.');
+    }
+  };
+
+  const handleQuickStageChange = (job: JobApplicationItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    const stageOrder: { stage: JobStage; label: string }[] = [
+      { stage: 'wishlist', label: 'Wishlist' },
+      { stage: 'applied', label: 'Applied' },
+      { stage: 'assessment', label: 'Assessment' },
+      { stage: 'interview', label: 'Interview' },
+      { stage: 'offer', label: 'Offer 🎉' },
+      { stage: 'rejected', label: 'Rejected' },
+    ];
     Alert.alert(
-      'Follow-Up Template Ready 📬',
-      `Subject: Follow-up on Application - ${company}\n\nHi ${recruiter || 'Hiring Team'},\n\nI am following up on my application for the Developer position at ${company}. Having architected scalable production apps, I am eager to discuss how my experience fits your team.\n\nBest regards,\n${profile.name}\n${profile.targetRole}`
+      'Move Application Stage',
+      `Role: ${job.role} at ${job.companyName}\nCurrent Stage: ${job.stage.toUpperCase()}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        ...stageOrder.map((st) => ({
+          text: `${st.label} ${job.stage === st.stage ? '✓' : ''}`,
+          onPress: () => {
+            updateJobStage(job.id, st.stage);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          },
+        })),
+      ]
+    );
+  };
+
+  const handleDeleteJob = (job: JobApplicationItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    Alert.alert(
+      'Delete Application',
+      `Are you sure you want to delete "${job.role}" at ${job.companyName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteJob(job.id);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          },
+        },
+      ]
     );
   };
 
@@ -148,13 +262,22 @@ export const CareerScreen: React.FC = () => {
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.headerAiBtn}
-            onPress={() => setCoachModalVisible(true)}
-          >
-            <Ionicons name="chatbubble-ellipses" size={14} color="#A855F7" />
-            <Text style={styles.headerAiText}>AI Coach</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <TouchableOpacity
+              style={styles.headerExportBtn}
+              onPress={handleExportPipelineCSV}
+            >
+              <Ionicons name="download-outline" size={13} color="#38BDF8" />
+              <Text style={styles.headerExportText}>Export CSV</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerAiBtn}
+              onPress={() => setCoachModalVisible(true)}
+            >
+              <Ionicons name="chatbubble-ellipses" size={14} color="#A855F7" />
+              <Text style={styles.headerAiText}>AI Coach</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Analytics Grid */}
@@ -183,67 +306,173 @@ export const CareerScreen: React.FC = () => {
         </GlassCard>
 
         {/* ========================================================= */}
-        {/* QUICK ACTION BAR */}
+        {/* CAREER TOOL BELT (HORIZONTAL SCROLL) */}
         {/* ========================================================= */}
-        <View style={styles.quickBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.toolBeltScroll}
+          contentContainerStyle={styles.toolBeltContent}
+        >
           <TouchableOpacity
-            style={[styles.quickBtn, { backgroundColor: 'rgba(99, 102, 241, 0.15)', borderColor: '#6366F1' }]}
+            style={[styles.toolChip, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: '#10B981' }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setAddJobModalVisible(true);
+            }}
+          >
+            <Ionicons name="add-circle" size={15} color="#10B981" />
+            <Text style={[styles.toolChipText, { color: '#10B981' }]}>+ Add Application</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.toolChip,
+              hasKey
+                ? { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: '#10B981' }
+                : { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: '#F59E0B' },
+            ]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setApiKeyModalVisible(true);
+            }}
+          >
+            <Ionicons name="key" size={15} color={hasKey ? '#10B981' : '#F59E0B'} />
+            <Text style={[styles.toolChipText, { color: hasKey ? '#10B981' : '#F59E0B' }]}>
+              {hasKey ? 'AI Key 🟢' : 'Set AI Key 🔑'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.toolChip, { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: '#38BDF8' }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              if (jobs.length > 0) {
+                handleOpenOutreach(jobs[0], 'referral_request');
+              } else {
+                Alert.alert('No Jobs', 'Discover or add a job application first.');
+              }
+            }}
+          >
+            <Ionicons name="people" size={15} color="#38BDF8" />
+            <Text style={[styles.toolChipText, { color: '#38BDF8' }]}>Referral & Outreach</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.toolChip, { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: '#F59E0B' }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setOfferNegotiatorVisible(true);
+            }}
+          >
+            <Ionicons name="scale" size={15} color="#F59E0B" />
+            <Text style={[styles.toolChipText, { color: '#F59E0B' }]}>Offer Negotiator</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.toolChip, { backgroundColor: 'rgba(6, 182, 212, 0.15)', borderColor: '#06B6D4' }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setAtsModalVisible(true);
+            }}
+          >
+            <Ionicons name="scan-outline" size={15} color="#06B6D4" />
+            <Text style={[styles.toolChipText, { color: '#06B6D4' }]}>ATS Scanner</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.toolChip, { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: '#F59E0B' }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setInHandModalVisible(true);
+            }}
+          >
+            <Ionicons name="calculator-outline" size={15} color="#F59E0B" />
+            <Text style={[styles.toolChipText, { color: '#F59E0B' }]}>In-Hand CTC</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.toolChip, { backgroundColor: 'rgba(168, 85, 247, 0.15)', borderColor: '#A855F7' }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setCoachModalVisible(true);
+            }}
+          >
+            <Ionicons name="chatbubble-ellipses" size={15} color="#C084FC" />
+            <Text style={[styles.toolChipText, { color: '#C084FC' }]}>AI Coach</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.toolChip, { backgroundColor: 'rgba(99, 102, 241, 0.15)', borderColor: '#6366F1' }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setProfileModalVisible(true);
             }}
           >
-            <Ionicons name="person" size={14} color="#818CF8" />
-            <Text style={[styles.quickBtnText, { color: '#818CF8' }]}>Profile & Resumes</Text>
+            <Ionicons name="person" size={15} color="#818CF8" />
+            <Text style={[styles.toolChipText, { color: '#818CF8' }]}>Profile & Resumes</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.quickBtn, { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: '#38BDF8' }]}
+            style={[styles.toolChip, { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: '#38BDF8' }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setPreferencesModalVisible(true);
             }}
           >
-            <Ionicons name="options" size={14} color="#38BDF8" />
-            <Text style={[styles.quickBtnText, { color: '#38BDF8' }]}>Preferences</Text>
+            <Ionicons name="options" size={15} color="#38BDF8" />
+            <Text style={[styles.toolChipText, { color: '#38BDF8' }]}>Preferences</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.quickBtn, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: '#10B981' }]}
+            style={[styles.toolChip, { backgroundColor: 'rgba(20, 184, 166, 0.15)', borderColor: '#14B8A6' }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setAnswerBankModalVisible(true);
             }}
           >
-            <Ionicons name="bookmark" size={14} color="#10B981" />
-            <Text style={[styles.quickBtnText, { color: '#10B981' }]}>Answer Bank</Text>
+            <Ionicons name="bookmark" size={15} color="#2DD4BF" />
+            <Text style={[styles.toolChipText, { color: '#2DD4BF' }]}>Answer Bank</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
 
         {/* ========================================================= */}
         {/* NAVIGATION SEGMENTED TABS */}
         {/* ========================================================= */}
         <View style={styles.navTabRow}>
-          {(['Jobs', 'Tracker', 'Profile', 'Preferences', 'Answer Bank'] as NavTab[]).map((tab) => {
-            const isSelected = activeTab === tab;
-            return (
-              <TouchableOpacity
-                key={tab}
-                style={[styles.navTabChip, isSelected && styles.navTabChipActive]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                  if (tab === 'Profile') setProfileModalVisible(true);
-                  else if (tab === 'Preferences') setPreferencesModalVisible(true);
-                  else if (tab === 'Answer Bank') setAnswerBankModalVisible(true);
-                  else setActiveTab(tab);
-                }}
-              >
-                <Text style={[styles.navTabChipText, isSelected && styles.navTabChipTextActive]}>
-                  {tab}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          <TouchableOpacity
+            style={[styles.navTabChip, activeTab === 'Jobs' && styles.navTabChipActive]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setActiveTab('Jobs');
+            }}
+          >
+            <Ionicons
+              name="briefcase-outline"
+              size={14}
+              color={activeTab === 'Jobs' ? '#FFFFFF' : Colors.textMuted}
+            />
+            <Text style={[styles.navTabChipText, activeTab === 'Jobs' && styles.navTabChipTextActive]}>
+              Discover Roles ({totalDiscovered})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.navTabChip, activeTab === 'Tracker' && styles.navTabChipActive]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setActiveTab('Tracker');
+            }}
+          >
+            <Ionicons
+              name="funnel-outline"
+              size={14}
+              color={activeTab === 'Tracker' ? '#FFFFFF' : Colors.textMuted}
+            />
+            <Text style={[styles.navTabChipText, activeTab === 'Tracker' && styles.navTabChipTextActive]}>
+              Pipeline Tracker ({appliedCount + interviewCount + offerCount})
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* ========================================================= */}
@@ -317,84 +546,138 @@ export const CareerScreen: React.FC = () => {
               const isApplied = job.stage === 'applied';
 
               return (
-                <GlassCard key={job.id} style={styles.jobCard} variant="elevated">
-                  {/* Job Header */}
-                  <View style={styles.jobCardTop}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.jobRole}>{job.role}</Text>
-                      <Text style={styles.jobCompany}>{job.companyName}</Text>
-                    </View>
-                    <Badge
-                      label={`${matchScore}% Match`}
-                      variant={matchScore >= 80 ? 'primary' : 'gold'}
-                    />
-                  </View>
-
-                  {/* Metadata Row */}
-                  <View style={styles.jobMetaRow}>
-                    <View style={styles.metaPill}>
-                      <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
-                      <Text style={styles.metaPillText}>{job.location}</Text>
-                    </View>
-                    <View style={styles.metaPill}>
-                      <Ionicons name="globe-outline" size={12} color="#38BDF8" />
-                      <Text style={[styles.metaPillText, { color: '#38BDF8' }]}>{job.workMode}</Text>
-                    </View>
-                    <View style={styles.metaPill}>
-                      <Ionicons name="cash-outline" size={12} color="#4ADE80" />
-                      <Text style={[styles.metaPillText, { color: '#4ADE80' }]}>
-                        ₹{job.ctcMin} – {job.ctcMax} LPA
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Tags */}
-                  {job.tags && job.tags.length > 0 && (
-                    <View style={styles.tagsRow}>
-                      {job.tags.slice(0, 4).map((tag, idx) => (
-                        <View key={idx} style={styles.skillChip}>
-                          <Text style={styles.skillChipText}>{tag}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  <View style={styles.cardDivider} />
-
-                  {/* Bottom Actions */}
-                  <View style={styles.jobCardBottom}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Badge label={job.stage.toUpperCase()} variant={getStageVariant(job.stage)} />
-                      {job.appliedDate && (
-                        <Text style={styles.appliedDateText}>Applied: {job.appliedDate}</Text>
-                      )}
+                <TouchableOpacity
+                  key={job.id}
+                  activeOpacity={0.9}
+                  onPress={() => handleOpenJobDetail(job)}
+                  onLongPress={() => handleDeleteJob(job)}
+                >
+                  <GlassCard style={styles.jobCard} variant="elevated">
+                    {/* Job Header */}
+                    <View style={styles.jobCardTop}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.jobRole}>{job.role}</Text>
+                        <Text style={styles.jobCompany}>{job.companyName}</Text>
+                      </View>
+                      <Badge
+                        label={`${matchScore}% Match`}
+                        variant={matchScore >= 80 ? 'primary' : 'gold'}
+                      />
                     </View>
 
-                    <View style={styles.cardActionGroup}>
-                      <TouchableOpacity
-                        style={styles.letterBtn}
-                        onPress={() => handleOpenCoverLetter(job)}
-                      >
-                        <Ionicons name="document-text-outline" size={14} color="#F59E0B" />
-                        <Text style={styles.letterBtnText}>Letter</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[styles.applyBtn, isApplied && styles.applyBtnDisabled]}
-                        onPress={() => handleOpenAutoApply(job)}
-                      >
-                        <Ionicons
-                          name={isApplied ? 'checkmark-circle' : 'rocket'}
-                          size={14}
-                          color="#FFFFFF"
-                        />
-                        <Text style={styles.applyBtnText}>
-                          {isApplied ? 'Re-Apply' : 'Auto-Apply'}
+                    {/* Metadata Row */}
+                    <View style={styles.jobMetaRow}>
+                      <View style={styles.metaPill}>
+                        <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
+                        <Text style={styles.metaPillText}>{job.location}</Text>
+                      </View>
+                      <View style={styles.metaPill}>
+                        <Ionicons name="globe-outline" size={12} color="#38BDF8" />
+                        <Text style={[styles.metaPillText, { color: '#38BDF8' }]}>{job.workMode}</Text>
+                      </View>
+                      <View style={styles.metaPill}>
+                        <Ionicons name="cash-outline" size={12} color="#4ADE80" />
+                        <Text style={[styles.metaPillText, { color: '#4ADE80' }]}>
+                          ₹{job.ctcMin} – {job.ctcMax} LPA
                         </Text>
-                      </TouchableOpacity>
+                      </View>
                     </View>
-                  </View>
-                </GlassCard>
+
+                    {/* Tags */}
+                    {job.tags && job.tags.length > 0 && (
+                      <View style={styles.tagsRow}>
+                        {job.tags.slice(0, 4).map((tag, idx) => (
+                          <View key={idx} style={styles.skillChip}>
+                            <Text style={styles.skillChipText}>{tag}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Upcoming Scheduled Interview Round Banner */}
+                    {job.interviews && job.interviews.length > 0 && (
+                      <View style={styles.interviewAlertPill}>
+                        <Ionicons name="videocam" size={12} color="#C084FC" />
+                        <Text style={styles.interviewAlertText} numberOfLines={1}>
+                          {job.interviews[job.interviews.length - 1].roundName} • {job.interviews[job.interviews.length - 1].scheduledAt || 'Upcoming'}
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={styles.cardDivider} />
+
+                    {/* Bottom Actions */}
+                    <View style={styles.jobCardBottom}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+                        <TouchableOpacity
+                          style={styles.stagePickerTrigger}
+                          onPress={() => handleQuickStageChange(job)}
+                        >
+                          <Badge label={job.stage.toUpperCase()} variant={getStageVariant(job.stage)} />
+                          <Ionicons name="chevron-down" size={12} color={Colors.textMuted} />
+                        </TouchableOpacity>
+                        {job.appliedDate && (
+                          <Text style={styles.appliedDateText}>Applied: {job.appliedDate}</Text>
+                        )}
+                        {/* Stale Application Follow-up Flag */}
+                        {job.stage === 'applied' && (() => {
+                          const age = getApplicationAgeDays(job.appliedDate);
+                          if (age >= 5 && age < 14) {
+                            return (
+                              <TouchableOpacity
+                                style={styles.followUpBadgeBtn}
+                                onPress={() => handleOpenOutreach(job, 'follow_up_checkin')}
+                              >
+                                <Ionicons name="time-outline" size={11} color="#F59E0B" />
+                                <Text style={styles.followUpBadgeText}>Follow-up Due ({age}d) ⏳</Text>
+                              </TouchableOpacity>
+                            );
+                          }
+                          if (age >= 14) {
+                            return (
+                              <View style={styles.staleBadge}>
+                                <Text style={styles.staleBadgeText}>Stale ({age}d+)</Text>
+                              </View>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </View>
+
+                      <View style={styles.cardActionGroup}>
+                        <TouchableOpacity
+                          style={styles.pitchBtn}
+                          onPress={() => handleOpenOutreach(job, 'referral_request')}
+                        >
+                          <Ionicons name="people-outline" size={13} color="#38BDF8" />
+                          <Text style={styles.pitchBtnText}>Pitch</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.letterBtn}
+                          onPress={() => handleOpenCoverLetter(job)}
+                        >
+                          <Ionicons name="document-text-outline" size={13} color="#F59E0B" />
+                          <Text style={styles.letterBtnText}>Letter</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.applyBtn, isApplied && styles.applyBtnDisabled]}
+                          onPress={() => handleOpenAutoApply(job)}
+                        >
+                          <Ionicons
+                            name={isApplied ? 'checkmark-circle' : 'rocket'}
+                            size={13}
+                            color="#FFFFFF"
+                          />
+                          <Text style={styles.applyBtnText}>
+                            {isApplied ? 'Re-Apply' : 'Auto-Apply'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </GlassCard>
+                </TouchableOpacity>
               );
             })
           )}
@@ -444,6 +727,34 @@ export const CareerScreen: React.FC = () => {
       <InterviewCoachModal
         visible={coachModalVisible}
         onClose={() => setCoachModalVisible(false)}
+      />
+      <JobDetailModal
+        visible={detailModalVisible}
+        job={selectedJobForDetail}
+        onClose={() => {
+          setDetailModalVisible(false);
+          setSelectedJobForDetail(null);
+        }}
+        onOpenCoverLetter={handleOpenCoverLetter}
+        onOpenAutoApply={handleOpenAutoApply}
+        onOpenOutreach={(j, type) => handleOpenOutreach(j, type)}
+      />
+      <OutreachGeneratorModal
+        visible={outreachModalVisible}
+        job={selectedJobForOutreach}
+        defaultType={outreachDefaultType}
+        onClose={() => {
+          setOutreachModalVisible(false);
+          setSelectedJobForOutreach(null);
+        }}
+      />
+      <OfferNegotiatorModal
+        visible={offerNegotiatorVisible}
+        onClose={() => setOfferNegotiatorVisible(false)}
+      />
+      <ApiKeyModal
+        visible={apiKeyModalVisible}
+        onClose={() => setApiKeyModalVisible(false)}
       />
     </ScreenContainer>
   );
@@ -520,24 +831,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
 
-  // Quick Bar
-  quickBar: {
-    flexDirection: 'row',
-    gap: 8,
+  // Career Tool Belt
+  toolBeltScroll: {
     marginBottom: Spacing.md,
   },
-  quickBtn: {
-    flex: 1,
+  toolBeltContent: {
+    paddingRight: Spacing.md,
+  },
+  toolChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 9,
-    borderRadius: Radii.lg,
-    borderWidth: 1,
     gap: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    marginRight: 8,
   },
-  quickBtnText: {
-    fontSize: 11,
+  toolChipText: {
+    fontSize: 12,
     fontWeight: '700',
   },
 
@@ -548,11 +860,13 @@ const styles = StyleSheet.create({
     borderRadius: Radii.lg,
     padding: 3,
     marginBottom: Spacing.md,
-    gap: 4,
+    gap: 6,
   },
   navTabChip: {
     flex: 1,
-    paddingVertical: 7,
+    flexDirection: 'row',
+    gap: 6,
+    paddingVertical: 9,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radii.md,
@@ -561,13 +875,36 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   navTabChipText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: Colors.textMuted,
   },
   navTabChipTextActive: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  stagePickerTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 2,
+  },
+  interviewAlertPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(192, 132, 252, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(192, 132, 252, 0.25)',
+    borderRadius: Radii.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 6,
+  },
+  interviewAlertText: {
+    fontSize: 11,
+    color: '#C084FC',
+    fontWeight: '600',
   },
 
   // Search
@@ -762,5 +1099,63 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     paddingHorizontal: 24,
+  },
+  headerExportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
+    gap: 4,
+  },
+  headerExportText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#38BDF8',
+  },
+  pitchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radii.md,
+    gap: 4,
+  },
+  pitchBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#38BDF8',
+  },
+  followUpBadgeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: Radii.sm,
+  },
+  followUpBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  staleBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radii.xs,
+  },
+  staleBadgeText: {
+    fontSize: 10,
+    color: Colors.textMuted,
   },
 });

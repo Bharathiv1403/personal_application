@@ -4,7 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import { Linking } from 'react-native';
 import { REAL_CAREER_SEED_JOBS } from '@/core/data/real-career-seed';
-import { BHARATHI_CANDIDATE_PROFILE } from '@/core/data/candidate-profile';
 import { JobDiscoveryService, DiscoveredJobItem } from '@/core/utils/job-discovery-service';
 
 export type JobStage = 'wishlist' | 'applied' | 'assessment' | 'interview' | 'offer' | 'rejected';
@@ -81,7 +80,7 @@ const INITIAL_REAL_JOBS: JobApplicationItem[] = REAL_CAREER_SEED_JOBS.slice(0, 4
 export const useJobStore = create<JobState>()(
   persist(
     (set, get) => ({
-      myResumeSkills: BHARATHI_CANDIDATE_PROFILE.frontendSkills.concat(BHARATHI_CANDIDATE_PROFILE.mobileSkills),
+      myResumeSkills: ['React', 'React Native', 'TypeScript', 'JavaScript', 'Next.js', 'Expo', 'Node.js', 'Zustand', 'Tailwind CSS', 'REST APIs', 'Redux'],
       jobs: INITIAL_REAL_JOBS,
       isLoadingLiveJobs: false,
 
@@ -113,13 +112,29 @@ export const useJobStore = create<JobState>()(
         const targetUrl = url || get().jobs.find((j) => j.id === id)?.url;
         
         // Mark as applied in local pipeline
+        const appliedDate = new Date().toISOString().split('T')[0];
         set((state) => ({
           jobs: state.jobs.map((j) =>
             j.id === id
-              ? { ...j, stage: 'applied', appliedDate: new Date().toISOString().split('T')[0] }
+              ? { ...j, stage: 'applied', appliedDate }
               : j
           ),
         }));
+
+        const appliedJob = get().jobs.find((j) => j.id === id);
+        if (appliedJob) {
+          try {
+            const { NotificationService } = require('@/core/utils/notification-service');
+            NotificationService.scheduleJobFollowUpReminder(
+              appliedJob.id,
+              appliedJob.companyName,
+              appliedJob.role,
+              appliedDate
+            );
+          } catch (e) {
+            console.warn('[JobStore] Follow-up reminder note:', e);
+          }
+        }
 
         // Open application URL in browser
         if (targetUrl) {

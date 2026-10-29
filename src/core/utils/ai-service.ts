@@ -1,5 +1,3 @@
-import { BHARATHI_CANDIDATE_PROFILE } from '../data/candidate-profile';
-
 export interface ChatMessage {
   id: string;
   sender: 'agent' | 'user';
@@ -24,19 +22,95 @@ export class AIService {
   private static ollamaModel = process.env.EXPO_PUBLIC_OLLAMA_MODEL || 'llama3.2';
 
   /**
+   * Dynamically loads the active user and candidate profile for prompt tailoring
+   */
+  private static getActiveUserProfile() {
+    try {
+      const { useCandidateProfileStore } = require('../../features/career/state/candidate-profile-store');
+      const { useAuthStore } = require('../../features/auth/state/auth-store');
+      const candidate = useCandidateProfileStore.getState();
+      const authUser = useAuthStore.getState().user;
+      const name = candidate.name || authUser?.name || 'Applicant';
+      const email = candidate.email || authUser?.email || '';
+      const phone = candidate.phone || '';
+      const title = candidate.targetRole || 'Software Engineer';
+      const yearsOfExperience = candidate.yearsOfExperience || '2+ years';
+      const skills = candidate.skills?.length ? candidate.skills : ['React', 'React Native', 'TypeScript', 'Node.js'];
+      const githubUrl = candidate.githubUrl || '';
+      const linkedinUrl = candidate.linkedinUrl || '';
+      const portfolioUrl = candidate.portfolioUrl || '';
+      return { name, email, phone, title, yearsOfExperience, skills, githubUrl, linkedinUrl, portfolioUrl };
+    } catch {
+      return {
+        name: 'Applicant',
+        email: '',
+        phone: '',
+        title: 'Software Engineer',
+        yearsOfExperience: '2+ years',
+        skills: ['React', 'React Native', 'TypeScript', 'Node.js'],
+        githubUrl: '',
+        linkedinUrl: '',
+        portfolioUrl: '',
+      };
+    }
+  }
+
+  /**
+   * Returns active Gemini Key from user config or environment
+   */
+  static getGeminiKey(): string {
+    try {
+      const { useAiConfigStore } = require('../state/ai-config-store');
+      const userKey = useAiConfigStore.getState().geminiKey;
+      if (this.isValidKey(userKey)) return userKey.trim();
+    } catch {}
+    return process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
+  }
+
+  /**
+   * Returns active Groq Key from user config or environment
+   */
+  static getGroqKey(): string {
+    try {
+      const { useAiConfigStore } = require('../state/ai-config-store');
+      const userKey = useAiConfigStore.getState().groqKey;
+      if (this.isValidKey(userKey)) return userKey.trim();
+    } catch {}
+    return process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
+  }
+
+  /**
    * Returns list of configured and available providers
    */
   static getConfiguredProviders(): AIProvider[] {
     const list: AIProvider[] = [];
-    // Prioritize Groq for ultra-fast (sub-second) responses
-    if (this.isValidKey(this.groqKey)) list.push('groq');
-    if (this.isValidKey(this.geminiKey)) list.push('gemini');
+    let preferred = 'auto';
+    try {
+      const { useAiConfigStore } = require('../state/ai-config-store');
+      preferred = useAiConfigStore.getState().preferredProvider;
+    } catch {}
+
+    const hasGroq = this.isValidKey(this.getGroqKey());
+    const hasGemini = this.isValidKey(this.getGeminiKey());
+
+    if (preferred === 'gemini') {
+      if (hasGemini) list.push('gemini');
+      if (hasGroq) list.push('groq');
+    } else {
+      if (hasGroq) list.push('groq');
+      if (hasGemini) list.push('gemini');
+    }
+
     if (this.ollamaUrl && this.ollamaUrl.startsWith('http')) list.push('ollama');
     if (this.isValidKey(this.hfKey)) list.push('huggingface');
     return list;
   }
 
-  private static isValidKey(key?: string): boolean {
+  static hasConfiguredKey(): boolean {
+    return this.getConfiguredProviders().length > 0;
+  }
+
+  static isValidKey(key?: string): boolean {
     return Boolean(key && key.trim().length > 5 && !key.includes('your_') && !key.includes('here'));
   }
 
@@ -79,7 +153,7 @@ export class AIService {
    * Provider: Google Gemini
    */
   private static async callGemini(options: QueryOptions): Promise<string | null> {
-    const key = this.geminiKey;
+    const key = this.getGeminiKey();
     const models = [
       'gemini-3.8-flash',
       'gemini-2.5-flash',
@@ -145,7 +219,7 @@ export class AIService {
    * Provider: Groq Cloud (Ultra-Fast 120B / 20B / Llama)
    */
   private static async callGroq(options: QueryOptions): Promise<string | null> {
-    const key = this.groqKey;
+    const key = this.getGroqKey();
     const models = [
       'openai/gpt-oss-120b',
       'openai/gpt-oss-20b',
@@ -301,8 +375,9 @@ export class AIService {
       return "⚠️ No Free AI Key configured.\n\nAdd your free Gemini API key (aistudio.google.com) or Groq key (console.groq.com) in .env to activate the AI Assistant.";
     }
 
+    const user = this.getActiveUserProfile();
     const systemPrompt = `You are AAYON, an intelligent executive personal assistant and life mentor inside a personal Life OS mobile app.
-The user is Bharathi.
+The user is ${user.name}.
 Current context:
 - Today's steps: ${context?.steps ?? 'N/A'}
 - Active loans to track: ${context?.pendingLoansCount ?? 0}
@@ -340,7 +415,8 @@ Give concise, helpful, empowering answers tailored for mobile reading (use bulle
       return fallbackText;
     }
 
-    const prompt = `Generate a single short energetic morning executive summary (max 2 sentences) for Bharathi.
+    const user = this.getActiveUserProfile();
+    const prompt = `Generate a single short energetic morning executive summary (max 2 sentences) for ${user.name}.
 Metrics:
 - Steps: ${context.steps} / ${context.stepGoal}
 - Water: ${context.waterMl}ml / ${context.waterGoal}ml
@@ -360,28 +436,28 @@ Metrics:
    * 3. 1-Click Tailored ATS Cover Letter
    */
   static async generateCoverLetter(company: string, role: string, tags: string[] = []): Promise<string> {
-    const profile = BHARATHI_CANDIDATE_PROFILE;
+    const profile = this.getActiveUserProfile();
 
     const fallbackLetter = `Dear Hiring Team at ${company},
 
-I am writing to express my strong interest in the ${role} position. With over 2+ years of experience as a Frontend Developer & Lead at Sagasoft Technologies, I specialize in building high-performance web and mobile applications using React, React Native, Next.js, and TypeScript.
+I am writing to express my strong interest in the ${role} position. With over ${profile.yearsOfExperience} of experience as a ${profile.title}, I specialize in building high-performance, scalable applications using ${profile.skills.slice(0, 4).join(', ')}.
 
-In my recent projects, I spearheaded the frontend architecture of enterprise SaaS products including the Saga Mail mobile client (Expo & Hermes push engine) and the SagaID Admin Console with OIDC security. My background aligns closely with the technical demands of ${company}${tags.length ? ` (especially in ${tags.join(', ')})` : ''}.
+In my recent projects, I spearheaded technical architecture and full-lifecycle delivery of mission-critical features with high performance and security standards. My engineering background aligns closely with the technical demands of ${company}${tags.length ? ` (especially in ${tags.join(', ')})` : ''}.
 
-I look forward to discussing how my engineering background and leadership experience can contribute to your team's success.
+I look forward to discussing how my engineering background and track record of delivering results can contribute to your team's success.
 
 Sincerely,
-Bharathi V
-${profile.email} | ${profile.phone}`;
+${profile.name}
+${profile.email ? profile.email : ''}${profile.phone ? ` | ${profile.phone}` : ''}`;
 
     if (this.getConfiguredProviders().length === 0) {
       return fallbackLetter;
     }
 
     const prompt = `Write a compelling, concise 3-paragraph professional Cover Letter for:
-Candidate: Bharathi V (${profile.title})
-Current Company: Sagasoft Technologies (Frontend Team Lead, 2+ YOE)
-Key Stack: React, React Native, Expo, Next.js, TypeScript, Zustand, OIDC, Enterprise SaaS
+Candidate: ${profile.name} (${profile.title})
+Experience: ${profile.yearsOfExperience}
+Key Stack: ${profile.skills.join(', ')}
 Target Role: ${role}
 Target Company: ${company}
 Target Tech: ${tags.join(', ')}
@@ -423,5 +499,162 @@ Keep reply under 150 words.`;
     });
 
     return feedback || fallbackFeedback;
+  }
+
+  /**
+   * 5. Multi-Channel Cold Outreach & Referral Pitch Generator
+   */
+  static async generateOutreachPitch(
+    type: 'linkedin_connect' | 'referral_request' | 'recruiter_inmail' | 'follow_up_checkin',
+    company: string,
+    role: string,
+    recruiterName?: string,
+    tags: string[] = []
+  ): Promise<string> {
+    const profile = this.getActiveUserProfile();
+    const greeting = recruiterName ? `Hi ${recruiterName},` : 'Hi there,';
+
+    let fallbackText = '';
+    switch (type) {
+      case 'linkedin_connect':
+        fallbackText = `${greeting} noticed the ${role} opening at ${company}. As a ${profile.title} (${profile.yearsOfExperience}) building high-perf apps, I'd love to connect & explore how my tech background aligns. Best, ${profile.name}.`;
+        break;
+      case 'referral_request':
+        fallbackText = `Hi [Name],\n\nI came across the ${role} opening at ${company} and was really impressed by your team's engineering work.\n\nI'm a ${profile.title} (${profile.yearsOfExperience}) specializing in ${profile.skills.slice(0, 3).join(', ')}. Given my background, I believe I'd be a great fit.\n\nWould you be open to putting in a referral for me?${profile.githubUrl ? ` GitHub: ${profile.githubUrl}` : ''}\n\nThank you!\n${profile.name}\n${profile.email}`;
+        break;
+      case 'recruiter_inmail':
+        fallbackText = `Subject: Application Inquiry: ${role} - ${profile.name}\n\n${greeting}\n\nI'm reaching out regarding the ${role} position at ${company}. With ${profile.yearsOfExperience} in ${profile.title}, I specialize in ${profile.skills.slice(0, 4).join(', ')}.\n\nI'd welcome a brief conversation to discuss how I can contribute to ${company}'s roadmap.\n\n${profile.portfolioUrl || profile.githubUrl ? `Portfolio: ${profile.portfolioUrl || profile.githubUrl}\n` : ''}${profile.phone ? `Phone: ${profile.phone}\n` : ''}\nBest regards,\n${profile.name}`;
+        break;
+      case 'follow_up_checkin':
+        fallbackText = `Subject: Gentle Follow-up: ${role} Application - ${profile.name}\n\n${greeting}\n\nI hope you are having a productive week.\n\nI am following up on my application for the ${role} role at ${company}. I remain very enthusiastic about your team's mission and would love to check if there are any updates regarding the next steps.\n\nPlease let me know if you need any additional details or references from my end.\n\nWarm regards,\n${profile.name}`;
+        break;
+    }
+
+    if (this.getConfiguredProviders().length === 0) {
+      return fallbackText;
+    }
+
+    let prompt = '';
+    if (type === 'linkedin_connect') {
+      prompt = `Write a LinkedIn Connection Note under STRICT 280 characters for:
+Candidate: ${profile.name} (${profile.title}, ${profile.yearsOfExperience})
+Target: ${role} at ${company}
+Recruiter: ${recruiterName || 'Team member'}
+CRITICAL CONSTRAINT: MUST BE UNDER 280 CHARACTERS. Polite, professional, no fluff.`;
+    } else if (type === 'referral_request') {
+      prompt = `Write a polite, high-converting 1-on-1 Referral Request message to an employee at ${company} for the ${role} role.
+Candidate: ${profile.name} (${profile.title}, ${profile.skills.join(', ')}, ${profile.yearsOfExperience})
+Tags: ${tags.join(', ')}
+Include polite request for internal referral, brief proof of work, and GitHub profile mention. Under 180 words.`;
+    } else if (type === 'recruiter_inmail') {
+      prompt = `Write an executive Cold Outreach InMail to a talent recruiter (${recruiterName || 'HR'}) at ${company} for ${role}.
+Candidate: ${profile.name} (${profile.yearsOfExperience}, ${profile.title}, ${profile.skills.join(', ')})
+Include punchy subject line, value proposition, and call to action. Under 200 words.`;
+    } else {
+      prompt = `Write a courteous, professional follow-up email checking in on a job application submitted 7 days ago for ${role} at ${company}.
+Recipient: ${recruiterName || 'Hiring Team'}
+Candidate: ${profile.name}
+Tone: Respectful, enthusiastic, professional. Under 150 words.`;
+    }
+
+    const reply = await this.queryLLM({
+      userPrompt: prompt,
+      maxTokens: 350,
+    });
+
+    return reply || fallbackText;
+  }
+
+  /**
+   * 6. AI Resume Tailor & Quantifiable Bullet Generator (ATS Gap Closer)
+   */
+  static async generateResumeOptimizationBullets(jobDescription: string, resumeSkills: string[]): Promise<string[]> {
+    const fallbackBullets = [
+      "Architected responsive, cross-platform mobile modules utilizing React Native and TypeScript, optimizing render speeds by 35% and reducing bundle size by 20%.",
+      "Engineered automated CI/CD and unit testing pipelines with Jest, increasing code coverage to 85% and cutting regression cycles from 2 days to 3 hours.",
+      "Spearheaded real-time state synchronization using Zustand and WebSockets, supporting 10,000+ daily concurrent user sessions with 99.9% crash-free rate."
+    ];
+
+    if (this.getConfiguredProviders().length === 0) {
+      return fallbackBullets;
+    }
+
+    const prompt = `You are a Principal Technical Resume Architect.
+Review this Job Description and the candidate's core skills:
+Candidate Skills: ${resumeSkills.join(', ')}
+Target Job Description:
+"""${jobDescription.slice(0, 1500)}"""
+
+Generate exactly 3 high-impact, quantifiable resume achievement bullet points (starting with strong action verbs like 'Architected', 'Spearheaded', 'Engineered') tailored directly to win this ATS screening.
+Output ONLY a JSON array of 3 strings: ["bullet 1", "bullet 2", "bullet 3"].`;
+
+    const raw = await this.queryLLM({
+      userPrompt: prompt,
+      maxTokens: 400,
+    });
+
+    if (raw) {
+      try {
+        const jsonMatch = raw.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.slice(0, 3).map((b) => String(b));
+          }
+        }
+      } catch {
+        // fallback
+      }
+    }
+
+    return fallbackBullets;
+  }
+
+  /**
+   * 7. Executive Counter-Offer Salary Negotiation Email
+   */
+  static async generateCounterOfferLetter(
+    company: string,
+    role: string,
+    currentOfferLPA: number,
+    desiredLPA: number,
+    notes?: string
+  ): Promise<string> {
+    const profile = this.getActiveUserProfile();
+    const fallbackLetter = `Subject: Acceptance & Discussion regarding Offer for ${role} - ${profile.name}
+
+Dear Hiring Team at ${company},
+
+Thank you very much for extending the offer for the ${role} position. I am genuinely thrilled about the team, the engineering vision, and the opportunity to contribute to ${company}.
+
+I would like to discuss the compensation package. The current offer is ₹${currentOfferLPA} LPA. Based on my technical background and track record of building production systems, combined with standard market benchmarks for this role${notes ? ` (${notes})` : ''}, I am seeking a base CTC closer to ₹${desiredLPA} LPA.
+
+I am confident that my contributions will provide immediate value to the team. If we can reach an agreement near ₹${desiredLPA} LPA, I would be prepared to sign and accept the offer immediately.
+
+Thank you once again for your flexibility and support. I look forward to your thoughts.
+
+Sincerely,
+${profile.name}${profile.phone ? `\nPhone: ${profile.phone}` : ''}`;
+
+    if (this.getConfiguredProviders().length === 0) {
+      return fallbackLetter;
+    }
+
+    const prompt = `Write a courteous, highly strategic salary counter-offer negotiation email.
+Company: ${company}
+Role: ${role}
+Candidate: ${profile.name} (${profile.title}, ${profile.yearsOfExperience})
+Current Offer: ₹${currentOfferLPA} LPA
+Target Desired Compensation: ₹${desiredLPA} LPA
+Additional Leverage / Context: ${notes || 'Strong technical leadership, competing prospects, market benchmark'}
+
+Tone: Extremely polite, enthusiastic about joining, confident in business value, professional leverage. Under 200 words.`;
+
+    const letter = await this.queryLLM({
+      userPrompt: prompt,
+      maxTokens: 450,
+    });
+
+    return letter || fallbackLetter;
   }
 }

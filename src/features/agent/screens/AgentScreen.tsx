@@ -12,16 +12,22 @@ import { useHealthStore } from '@/features/health/state/health-store';
 import { useWealthStore } from '@/features/wealth/state/wealth-store';
 import { useJobStore } from '@/features/career/state/job-store';
 import { useAuthStore } from '@/features/auth/state/auth-store';
+import { useAiConfigStore } from '@/core/state/ai-config-store';
+import { ApiKeyModal } from '@/core/components/ApiKeyModal';
 
 export const AgentScreen: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [apiKeyModalVisible, setApiKeyModalVisible] = useState(false);
+
+  const isAiConfigured = useAiConfigStore((s) => s.isConfigured);
+  const hasKey = isAiConfigured || AIService.hasConfiguredKey();
 
   const todaySteps = useHealthStore((s) => s.todaySteps);
   const loans = useWealthStore((s) => s.loans);
   const jobs = useJobStore((s) => s.jobs);
   const user = useAuthStore((s) => s.user);
-  const userName = user?.name ? user.name.split(' ')[0] : 'Bharathi';
+  const userName = user?.name ? user.name.split(' ')[0] : 'User';
 
   const activeLoansCount = loans.filter((l) => l.status === 'active').length;
   const upcomingInterviewsCount = jobs.filter((j) => j.interviews && j.interviews.length > 0).length;
@@ -52,6 +58,12 @@ export const AgentScreen: React.FC = () => {
   const handleSend = async (customPrompt?: string) => {
     const messageToSend = (customPrompt || input).trim();
     if (!messageToSend || isLoading) return;
+
+    if (!hasKey) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      setApiKeyModalVisible(true);
+      return;
+    }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
@@ -95,14 +107,45 @@ export const AgentScreen: React.FC = () => {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.title}>AAYON • AI Copilot</Text>
             <Text style={styles.subtitle}>Executive Assistant & Career Mentor</Text>
           </View>
-          <TouchableOpacity style={styles.voiceBtn} onPress={speakLastMessage}>
-            <Ionicons name="volume-high-outline" size={20} color={Colors.purple} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              style={[styles.keyBtn, !hasKey && styles.keyBtnHighlight]}
+              onPress={() => setApiKeyModalVisible(true)}
+            >
+              <Ionicons
+                name={hasKey ? 'key' : 'key-outline'}
+                size={18}
+                color={hasKey ? '#10B981' : '#F59E0B'}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.voiceBtn} onPress={speakLastMessage}>
+              <Ionicons name="volume-high-outline" size={20} color={Colors.purple} />
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {/* Free API Key Prompt Banner */}
+        {!hasKey && (
+          <TouchableOpacity
+            style={styles.keyPromptBanner}
+            onPress={() => setApiKeyModalVisible(true)}
+          >
+            <View style={styles.keyIconCircle}>
+              <Ionicons name="key" size={16} color="#F59E0B" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.keyPromptTitle}>Free AI Key Required 🔑</Text>
+              <Text style={styles.keyPromptSub}>
+                Tap here to connect your free Google Gemini key in 10 seconds.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#F59E0B" />
+          </TouchableOpacity>
+        )}
 
         {/* Quick Launchers */}
         <View style={styles.launchersRow}>
@@ -184,6 +227,11 @@ export const AgentScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      <ApiKeyModal
+        visible={apiKeyModalVisible}
+        onClose={() => setApiKeyModalVisible(false)}
+      />
     </ScreenContainer>
   );
 };
@@ -209,6 +257,20 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
   },
+  keyBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: Radii.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  keyBtnHighlight: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: '#F59E0B',
+  },
   voiceBtn: {
     width: 38,
     height: 38,
@@ -218,6 +280,35 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(139, 92, 246, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  keyPromptBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderRadius: Radii.md,
+    padding: Spacing.sm,
+    marginBottom: Spacing.sm,
+    gap: 10,
+  },
+  keyIconCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: Radii.full,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  keyPromptTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  keyPromptSub: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
   launchersRow: {
     flexDirection: 'row',

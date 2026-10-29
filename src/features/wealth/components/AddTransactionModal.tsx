@@ -15,15 +15,21 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
-import { useWealthStore, TransactionType, PaymentMethod } from '../state/wealth-store';
+import { useWealthStore, TransactionType, PaymentMethod, Transaction } from '../state/wealth-store';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
   defaultType?: TransactionType;
+  initialTransaction?: Transaction | null;
 }
 
-export const AddTransactionModal: React.FC<Props> = ({ visible, onClose, defaultType = 'expense' }) => {
+export const AddTransactionModal: React.FC<Props> = ({
+  visible,
+  onClose,
+  defaultType = 'expense',
+  initialTransaction,
+}) => {
   const [type, setType] = useState<TransactionType>(defaultType);
   const [amount, setAmount] = useState('');
   const [title, setTitle] = useState('');
@@ -37,15 +43,35 @@ export const AddTransactionModal: React.FC<Props> = ({ visible, onClose, default
   const accounts = useWealthStore((s) => s.accounts);
   const categories = useWealthStore((s) => s.categories);
   const addTransaction = useWealthStore((s) => s.addTransaction);
+  const updateTransaction = useWealthStore((s) => s.updateTransaction);
 
-  // Set default account when modal opens
+  // Set default account / populate editing transaction when modal opens
   React.useEffect(() => {
-    if (visible && accounts.length > 0) {
-      if (!selectedAccountId) setSelectedAccountId(accounts[0].id);
-      if (accounts.length > 1 && !selectedToAccountId) setSelectedToAccountId(accounts[1].id);
-      setType(defaultType);
+    if (visible) {
+      if (initialTransaction) {
+        setType(initialTransaction.type);
+        setAmount(initialTransaction.amount.toString());
+        setTitle(initialTransaction.title);
+        setSelectedCategoryId(initialTransaction.categoryId);
+        setSelectedAccountId(initialTransaction.accountId);
+        setSelectedToAccountId(initialTransaction.toAccountId || '');
+        setPaymentMethod(initialTransaction.paymentMethod || 'UPI');
+        setMerchant(initialTransaction.merchant || '');
+        setDescription(initialTransaction.description || '');
+      } else {
+        setType(defaultType);
+        setAmount('');
+        setTitle('');
+        setMerchant('');
+        setDescription('');
+        setPaymentMethod('UPI');
+        if (accounts.length > 0) {
+          setSelectedAccountId(accounts[0].id);
+          if (accounts.length > 1) setSelectedToAccountId(accounts[1].id);
+        }
+      }
     }
-  }, [visible, accounts, defaultType]);
+  }, [visible, initialTransaction, accounts, defaultType]);
 
   const filteredCategories = categories.filter((c) =>
     type === 'expense' ? c.type === 'expense' : c.type === 'income'
@@ -73,27 +99,69 @@ export const AddTransactionModal: React.FC<Props> = ({ visible, onClose, default
       return;
     }
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    const executeSave = () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
-    addTransaction({
-      type,
-      title: title.trim(),
-      amount: numAmount,
-      categoryId: type === 'transfer' ? 'misc' : selectedCategoryId,
-      accountId: selectedAccountId,
-      toAccountId: type === 'transfer' ? selectedToAccountId : undefined,
-      date: new Date().toISOString().slice(0, 10),
-      paymentMethod,
-      merchant: merchant.trim() || undefined,
-      description: description.trim() || undefined,
-    });
+      if (initialTransaction) {
+        updateTransaction(initialTransaction.id, {
+          type,
+          title: title.trim(),
+          amount: numAmount,
+          categoryId: type === 'transfer' ? 'misc' : selectedCategoryId,
+          accountId: selectedAccountId,
+          toAccountId: type === 'transfer' ? selectedToAccountId : undefined,
+          paymentMethod,
+          merchant: merchant.trim() || undefined,
+          description: description.trim() || undefined,
+        });
+      } else {
+        addTransaction({
+          type,
+          title: title.trim(),
+          amount: numAmount,
+          categoryId: type === 'transfer' ? 'misc' : selectedCategoryId,
+          accountId: selectedAccountId,
+          toAccountId: type === 'transfer' ? selectedToAccountId : undefined,
+          date: new Date().toISOString().slice(0, 10),
+          paymentMethod,
+          merchant: merchant.trim() || undefined,
+          description: description.trim() || undefined,
+        });
+      }
 
-    // Reset fields
-    setAmount('');
-    setTitle('');
-    setMerchant('');
-    setDescription('');
-    onClose();
+      setAmount('');
+      setTitle('');
+      setMerchant('');
+      setDescription('');
+      onClose();
+    };
+
+    // Budget overspend alert check
+    if (type === 'expense') {
+      const budgets = useWealthStore.getState().budgets;
+      const targetBudget = budgets.find((b) => b.categoryId === selectedCategoryId);
+      if (targetBudget && targetBudget.amount > 0) {
+        const currentSpend = useWealthStore.getState().transactions
+          .filter((t) => t.type === 'expense' && t.categoryId === selectedCategoryId && t.id !== initialTransaction?.id)
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        if (currentSpend + numAmount > targetBudget.amount) {
+          const excess = Math.round(currentSpend + numAmount - targetBudget.amount);
+          const catName = categories.find((c) => c.id === selectedCategoryId)?.name || 'this category';
+          Alert.alert(
+            '⚠️ Budget Warning',
+            `Adding this ₹${numAmount} will exceed your monthly ${catName} budget (₹${targetBudget.amount}) by ₹${excess}.\n\nDo you want to proceed?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Proceed Anyway', style: 'destructive', onPress: executeSave },
+            ]
+          );
+          return;
+        }
+      }
+    }
+
+    executeSave();
   };
 
   return (
@@ -106,8 +174,14 @@ export const AddTransactionModal: React.FC<Props> = ({ visible, onClose, default
           {/* Header */}
           <View style={styles.modalHeader}>
             <View>
-              <Text style={styles.modalTitle}>Record Transaction</Text>
-              <Text style={styles.modalSubtitle}>Manage your income, expense & transfers</Text>
+              <Text style={styles.modalTitle}>
+                {initialTransaction ? 'Edit Transaction' : 'Record Transaction'}
+              </Text>
+              <Text style={styles.modalSubtitle}>
+                {initialTransaction
+                  ? 'Update amount, category or account'
+                  : 'Manage your income, expense & transfers'}
+              </Text>
             </View>
             <TouchableOpacity
               onPress={onClose}
@@ -329,7 +403,9 @@ export const AddTransactionModal: React.FC<Props> = ({ visible, onClose, default
           <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
             <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
             <Text style={styles.saveButtonText}>
-              Save {type.charAt(0).toUpperCase() + type.slice(1)}
+              {initialTransaction
+                ? 'Update Transaction'
+                : `Save ${type.charAt(0).toUpperCase() + type.slice(1)}`}
             </Text>
           </TouchableOpacity>
         </View>

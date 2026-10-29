@@ -63,11 +63,12 @@ export class GoogleAuthService {
       }
     }
 
-    // Default fast-path interactive account picker if Google Cloud Client ID is being configured
+    // Sandbox / Development fallback when EXPO_PUBLIC_GOOGLE_CLIENT_ID is not yet configured
+    // For Production Play Store builds, add your OAuth Web Client ID in .env
     return new Promise((resolve) => {
       Alert.alert(
-        'Continue with Google 🌐',
-        'Select your Google Account to proceed:',
+        'Google Sign-In 🌐',
+        'Google Cloud OAuth Client ID is not configured in .env for this development build.\n\nChoose an account to continue:',
         [
           {
             text: 'Cancel',
@@ -75,13 +76,14 @@ export class GoogleAuthService {
             onPress: () => resolve(null),
           },
           {
-            text: 'Sign in as Bharathi Ragav',
+            text: 'Continue with Google Account',
             onPress: () => {
+              const uniqueId = `user-${Date.now().toString().slice(-4)}`;
               resolve({
-                id: 'google-user-1',
-                name: 'Bharathi Ragav',
-                email: 'bharathiragav@gmail.com',
-                photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+                id: uniqueId,
+                name: 'App User',
+                email: 'user@gmail.com',
+                photoUrl: undefined,
               });
             },
           },

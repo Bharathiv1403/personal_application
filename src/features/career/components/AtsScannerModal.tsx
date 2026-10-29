@@ -9,12 +9,18 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Share,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
 import { Badge } from '@/core/design-system/primitives/Badge';
+import { AIService } from '@/core/utils/ai-service';
+import { useAiConfigStore } from '@/core/state/ai-config-store';
+import { ApiKeyModal } from '@/core/components/ApiKeyModal';
 import { useJobStore } from '../state/job-store';
 
 interface AtsScannerModalProps {
@@ -27,6 +33,9 @@ export const AtsScannerModal: React.FC<AtsScannerModalProps> = ({ visible, onClo
   const resumeSkills = useJobStore((s) => s.myResumeSkills);
 
   const [jdText, setJdText] = useState('');
+  const [isGeneratingBullets, setIsGeneratingBullets] = useState(false);
+  const [tailoredBullets, setTailoredBullets] = useState<string[]>([]);
+  const [apiKeyModalVisible, setApiKeyModalVisible] = useState(false);
 
   const [scanResult, setScanResult] = useState<{
     matchScore: number;
@@ -39,6 +48,33 @@ export const AtsScannerModal: React.FC<AtsScannerModalProps> = ({ visible, onClo
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const result = calculateJdMatch(jdText);
     setScanResult(result);
+  };
+
+  const handleGenerateAiBullets = async () => {
+    if (!jdText.trim()) return;
+    if (!AIService.hasConfiguredKey() && !useAiConfigStore.getState().isConfigured) {
+      setApiKeyModalVisible(true);
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setIsGeneratingBullets(true);
+    try {
+      const bullets = await AIService.generateResumeOptimizationBullets(jdText, resumeSkills);
+      setTailoredBullets(bullets);
+    } catch {
+      Alert.alert('AI Key Required', 'Could not generate bullets. Please configure your free Gemini or Groq API key.');
+    } finally {
+      setIsGeneratingBullets(false);
+    }
+  };
+
+  const handleCopyBullet = async (bullet: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    try {
+      await Share.share({ message: bullet });
+    } catch {
+      Alert.alert('Copied 📋', 'Bullet point ready to paste into your resume experience section!');
+    }
   };
 
   return (
@@ -132,10 +168,67 @@ export const AtsScannerModal: React.FC<AtsScannerModalProps> = ({ visible, onClo
                     </View>
                   </View>
                 )}
+
+                {/* AI Deep Resume Tailor Section */}
+                <View style={styles.aiBulletsCard}>
+                  <View style={styles.aiBulletsTop}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="sparkles" size={15} color="#A855F7" />
+                        <Text style={styles.aiBulletsTitle}>AI Deep Resume Tailoring</Text>
+                      </View>
+                      <Text style={styles.aiBulletsSub}>
+                        Generate 3 quantifiable bullet points targeted for this exact JD
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.aiBulletsBtn}
+                      onPress={handleGenerateAiBullets}
+                      disabled={isGeneratingBullets}
+                    >
+                      {isGeneratingBullets ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Ionicons name="flash" size={12} color="#FFFFFF" />
+                          <Text style={styles.aiBulletsBtnText}>Generate</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  {tailoredBullets.length > 0 && (
+                    <View style={styles.bulletsList}>
+                      {tailoredBullets.map((bullet, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          style={styles.bulletItem}
+                          activeOpacity={0.8}
+                          onPress={() => handleCopyBullet(bullet)}
+                        >
+                          <View style={styles.bulletIconCol}>
+                            <Ionicons name="checkmark-circle" size={16} color="#34D399" />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.bulletText}>{bullet}</Text>
+                            <Text style={styles.bulletCopyHint}>Tap to copy & paste into Experience</Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
               </View>
             )}
           </ScrollView>
         </View>
+
+        <ApiKeyModal
+          visible={apiKeyModalVisible}
+          onClose={() => setApiKeyModalVisible(false)}
+          onSuccess={() => handleGenerateAiBullets()}
+        />
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -308,6 +401,72 @@ const styles = StyleSheet.create({
   missingChipText: {
     fontSize: 11,
     color: Colors.gold,
+    fontWeight: '600',
+  },
+  aiBulletsCard: {
+    backgroundColor: 'rgba(168, 85, 247, 0.08)',
+    borderRadius: Radii.lg,
+    padding: Spacing.md,
+    marginTop: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.25)',
+  },
+  aiBulletsTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  aiBulletsTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#C084FC',
+  },
+  aiBulletsSub: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  aiBulletsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#9333EA',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radii.md,
+  },
+  aiBulletsBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  bulletsList: {
+    marginTop: Spacing.md,
+    gap: 8,
+  },
+  bulletItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    padding: Spacing.sm,
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  bulletIconCol: {
+    marginTop: 2,
+  },
+  bulletText: {
+    fontSize: 12,
+    color: '#E2E8F0',
+    lineHeight: 18,
+  },
+  bulletCopyHint: {
+    fontSize: 9,
+    color: '#34D399',
+    marginTop: 4,
     fontWeight: '600',
   },
 });

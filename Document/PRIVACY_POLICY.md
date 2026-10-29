@@ -43,11 +43,11 @@ AAYON requests only the minimum hardware permissions necessary to provide its co
 
 ### 5. Children’s Privacy
 
-Nova Life OS is not directed to individuals under the age of 13. We do not knowingly collect personal identifiable information from children.
+AAYON is not directed to individuals under the age of 13. We do not knowingly collect personal identifiable information from children.
 
 ---
 
 ### 6. Contact Us
 
 If you have questions about this Privacy Policy or data security practices, please contact us at:  
-**Email:** `bharathiragav@gmail.com`
+**Email:** `support@aayon.app`

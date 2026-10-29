@@ -275,6 +275,13 @@ export const CareerProfileModal: React.FC<Props> = ({ visible, onClose }) => {
                   </View>
                 )}
 
+                {profile.educations.length === 0 && !showAddEdu && (
+                  <View style={styles.emptyCardBox}>
+                    <Text style={styles.emptyCardText}>No education added yet.</Text>
+                    <Text style={styles.emptyCardSub}>Tap "+ Add" above to record your degree or college.</Text>
+                  </View>
+                )}
+
                 {profile.educations.map((edu) => (
                   <View key={edu.id} style={styles.cardItem}>
                     <View style={{ flex: 1 }}>
@@ -312,7 +319,7 @@ export const CareerProfileModal: React.FC<Props> = ({ visible, onClose }) => {
                     <Text style={styles.fieldLabel}>Company Name *</Text>
                     <TextInput
                       style={styles.textInput}
-                      placeholder="e.g. Sagasoft Technologies"
+                      placeholder="e.g. Acme Corp or Infosys"
                       placeholderTextColor={Colors.textMuted}
                       value={expCompany}
                       onChangeText={setExpCompany}
@@ -356,6 +363,13 @@ export const CareerProfileModal: React.FC<Props> = ({ visible, onClose }) => {
                   </View>
                 )}
 
+                {profile.experiences.length === 0 && !showAddExp && (
+                  <View style={styles.emptyCardBox}>
+                    <Text style={styles.emptyCardText}>No work experience added yet.</Text>
+                    <Text style={styles.emptyCardSub}>Tap "+ Add" above to record your past or current roles.</Text>
+                  </View>
+                )}
+
                 {profile.experiences.map((exp) => (
                   <View key={exp.id} style={styles.cardItem}>
                     <View style={{ flex: 1 }}>
@@ -390,6 +404,13 @@ export const CareerProfileModal: React.FC<Props> = ({ visible, onClose }) => {
                     <Text style={styles.addSmallBtnText}>+ Upload PDF</Text>
                   </TouchableOpacity>
                 </View>
+
+                {profile.resumes.length === 0 && (
+                  <View style={styles.emptyCardBox}>
+                    <Text style={styles.emptyCardText}>No resume PDF attached yet.</Text>
+                    <Text style={styles.emptyCardSub}>Tap "+ Upload PDF" above to attach your resume file.</Text>
+                  </View>
+                )}
 
                 {profile.resumes.map((res) => (
                   <View key={res.id} style={styles.cardItem}>
@@ -645,5 +666,27 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: '#F59E0B',
+  },
+  emptyCardBox: {
+    padding: Spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: Spacing.sm,
+  },
+  emptyCardText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  emptyCardSub: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 4,
+    textAlign: 'center',
   },
 });

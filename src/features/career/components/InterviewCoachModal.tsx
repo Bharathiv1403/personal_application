@@ -14,6 +14,8 @@ import * as Haptics from 'expo-haptics';
 import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
 import { AIService } from '@/core/utils/ai-service';
+import { useAiConfigStore } from '@/core/state/ai-config-store';
+import { ApiKeyModal } from '@/core/components/ApiKeyModal';
 import { CURATED_INTERVIEW_QUESTIONS, CURATED_ENGLISH_BYTES } from '@/core/data/candidate-profile';
 
 interface InterviewCoachModalProps {
@@ -28,6 +30,10 @@ export const InterviewCoachModal: React.FC<InterviewCoachModalProps> = ({ visibl
   const [userAnswer, setUserAnswer] = useState('');
   const [evaluating, setEvaluating] = useState(false);
   const [aiFeedback, setAiFeedback] = useState('');
+  const [apiKeyModalVisible, setApiKeyModalVisible] = useState(false);
+
+  const isAiConfigured = useAiConfigStore((s) => s.isConfigured);
+  const hasKey = isAiConfigured || AIService.hasConfiguredKey();
 
   const [currentEnglishIndex, setCurrentEnglishIndex] = useState(0);
 
@@ -49,6 +55,10 @@ export const InterviewCoachModal: React.FC<InterviewCoachModalProps> = ({ visibl
 
   const handleEvaluate = async () => {
     if (!userAnswer.trim()) return;
+    if (!hasKey) {
+      setApiKeyModalVisible(true);
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setEvaluating(true);
     setAiFeedback('');
@@ -70,11 +80,19 @@ export const InterviewCoachModal: React.FC<InterviewCoachModalProps> = ({ visibl
           <View style={styles.header}>
             <View>
               <Text style={styles.headerTitle}>Career & Interview Coach</Text>
-              <Text style={styles.headerSubtitle}>Bharathi's Personal Tech & Corporate English Prep</Text>
+              <Text style={styles.headerSubtitle}>Personal Tech & Corporate English Prep</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => setApiKeyModalVisible(true)}
+                style={{ padding: 6, borderRadius: Radii.sm, backgroundColor: '#1E1E24' }}
+              >
+                <Ionicons name="key" size={15} color={hasKey ? '#10B981' : '#F59E0B'} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <Ionicons name="close" size={20} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Tab Selector */}
@@ -234,6 +252,12 @@ export const InterviewCoachModal: React.FC<InterviewCoachModalProps> = ({ visibl
               </View>
             )}
           </ScrollView>
+
+          <ApiKeyModal
+            visible={apiKeyModalVisible}
+            onClose={() => setApiKeyModalVisible(false)}
+            onSuccess={() => handleEvaluate()}
+          />
         </View>
       </View>
     </Modal>

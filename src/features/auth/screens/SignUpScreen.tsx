@@ -19,15 +19,24 @@ import { GlassCard } from '@/core/design-system/primitives/GlassCard';
 import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
 import { useAuthStore } from '../state/auth-store';
-import { GoogleAuthService } from '@/core/utils/google-auth';
+import { GoogleAuthService, GoogleUserProfile } from '@/core/utils/google-auth';
+import { SetGooglePinModal } from '../components/SetGooglePinModal';
+import { TermsPrivacyModal } from '../components/TermsPrivacyModal';
+import { RestoreBackupModal } from '@/features/wealth/components/RestoreBackupModal';
 
 export const SignUpScreen: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
+  const [showConfirmPin, setShowConfirmPin] = useState(false);
   const [enableBiometrics, setEnableBiometrics] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [pendingGoogleUser, setPendingGoogleUser] = useState<GoogleUserProfile | null>(null);
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
+  const [restoreModalVisible, setRestoreModalVisible] = useState(false);
 
   const signUp = useAuthStore((s) => s.signUp);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
@@ -37,10 +46,17 @@ export const SignUpScreen: React.FC = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const googleUser = await GoogleAuthService.promptGoogleSignIn();
     if (googleUser) {
-      const success = await signInWithGoogle(googleUser);
-      if (success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      }
+      // Prompt user to set their custom 4-digit PIN for offline vault security
+      setPendingGoogleUser(googleUser);
+    }
+  };
+
+  const handleConfirmGooglePin = async (chosenPin: string) => {
+    if (!pendingGoogleUser) return;
+    const success = await signInWithGoogle(pendingGoogleUser, chosenPin);
+    setPendingGoogleUser(null);
+    if (success) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }
   };
 
@@ -112,7 +128,7 @@ export const SignUpScreen: React.FC = () => {
                   style={styles.textInput}
                   value={name}
                   onChangeText={setName}
-                  placeholder="e.g. Bharathi Ragav"
+                  placeholder="Enter your full name"
                   placeholderTextColor={Colors.textMuted}
                   autoCapitalize="words"
                 />
@@ -148,9 +164,16 @@ export const SignUpScreen: React.FC = () => {
                   placeholder="••••"
                   placeholderTextColor={Colors.textMuted}
                   keyboardType="number-pad"
-                  secureTextEntry
+                  secureTextEntry={!showPin}
                   maxLength={4}
                 />
+                <TouchableOpacity onPress={() => setShowPin(!showPin)} style={styles.eyeBtn}>
+                  <Ionicons
+                    name={showPin ? 'eye-off-outline' : 'eye-outline'}
+                    size={18}
+                    color={Colors.textMuted}
+                  />
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -166,9 +189,16 @@ export const SignUpScreen: React.FC = () => {
                   placeholder="••••"
                   placeholderTextColor={Colors.textMuted}
                   keyboardType="number-pad"
-                  secureTextEntry
+                  secureTextEntry={!showConfirmPin}
                   maxLength={4}
                 />
+                <TouchableOpacity onPress={() => setShowConfirmPin(!showConfirmPin)} style={styles.eyeBtn}>
+                  <Ionicons
+                    name={showConfirmPin ? 'eye-off-outline' : 'eye-outline'}
+                    size={18}
+                    color={Colors.textMuted}
+                  />
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -199,6 +229,18 @@ export const SignUpScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
 
+            {/* Terms & Privacy Consent */}
+            <TouchableOpacity
+              style={styles.termsRow}
+              onPress={() => setTermsModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.termsText}>
+                By creating a vault, you agree to AAYON's{' '}
+                <Text style={styles.termsHighlight}>Privacy Policy & Terms</Text>
+              </Text>
+            </TouchableOpacity>
+
             {/* Divider */}
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
@@ -215,6 +257,16 @@ export const SignUpScreen: React.FC = () => {
               <Ionicons name="logo-google" size={18} color="#EA4335" />
               <Text style={styles.googleBtnText}>Continue with Google</Text>
             </TouchableOpacity>
+
+            {/* Restore Backup Link */}
+            <TouchableOpacity
+              style={styles.restorePillBtn}
+              onPress={() => setRestoreModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="folder-open-outline" size={15} color={Colors.cyan} />
+              <Text style={styles.restorePillText}>Already have a backup? Restore Vault 📁</Text>
+            </TouchableOpacity>
           </GlassCard>
 
           {/* Privacy Guarantee Footer */}
@@ -225,6 +277,24 @@ export const SignUpScreen: React.FC = () => {
             </Text>
           </View>
         </ScrollView>
+
+        {/* Modals */}
+        <SetGooglePinModal
+          visible={Boolean(pendingGoogleUser)}
+          googleUser={pendingGoogleUser}
+          onCancel={() => setPendingGoogleUser(null)}
+          onConfirmPin={handleConfirmGooglePin}
+        />
+
+        <TermsPrivacyModal
+          visible={termsModalVisible}
+          onClose={() => setTermsModalVisible(false)}
+        />
+
+        <RestoreBackupModal
+          visible={restoreModalVisible}
+          onClose={() => setRestoreModalVisible(false)}
+        />
       </KeyboardAvoidingView>
     </ScreenContainer>
   );
@@ -369,5 +439,41 @@ const styles = StyleSheet.create({
   privacyGuaranteeText: {
     fontSize: 11,
     color: Colors.textMuted,
+  },
+  eyeBtn: {
+    padding: 6,
+  },
+  termsRow: {
+    marginTop: Spacing.sm,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+  },
+  termsText: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  termsHighlight: {
+    color: Colors.primary,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  restorePillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    marginTop: Spacing.sm,
+    backgroundColor: 'rgba(6, 182, 212, 0.08)',
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(6, 182, 212, 0.2)',
+  },
+  restorePillText: {
+    fontSize: 12,
+    color: Colors.cyan,
+    fontWeight: '600',
   },
 });

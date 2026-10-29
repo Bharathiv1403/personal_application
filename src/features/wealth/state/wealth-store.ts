@@ -113,12 +113,31 @@ export interface GoldHolding {
   purchaseDate?: string;
 }
 
+export type TripExpenseCategory =
+  | 'fuel'
+  | 'driver'
+  | 'toll_parking'
+  | 'repair'
+  | 'stay'
+  | 'food'
+  | 'activity'
+  | 'shopping'
+  | 'misc';
+
+export interface TripContribution {
+  id: string;
+  memberName: string;
+  amount: number;
+  date: string;
+}
+
 export interface TripExpense {
   id: string;
   title: string;
-  category: 'travel' | 'stay' | 'food' | 'activity' | 'shopping';
+  category: TripExpenseCategory;
   amount: number;
-  paidBy: string;
+  paidBy: string; // 'Common Pool' or member name
+  splitAmong?: string[]; // which members share this cost (defaults to all trip members)
   date: string;
 }
 
@@ -126,9 +145,27 @@ export interface Trip {
   id: string;
   name: string;
   budget: number;
+  tripType: 'solo' | 'group';
+  startDate?: string;
   members: string[];
+  contributions: TripContribution[];
   expenses: TripExpense[];
   status: 'ongoing' | 'completed';
+}
+
+export type PeerDebtType = 'gave' | 'took'; // 'gave' = Lent (You'll get back), 'took' = Borrowed (You owe)
+
+export interface PeerDebt {
+  id: string;
+  personName: string;
+  personPhone?: string;
+  type: PeerDebtType;
+  amount: number;
+  paidAmount: number; // partial payment tracking (default 0)
+  date: string;
+  note?: string;
+  status: 'pending' | 'settled';
+  settledDate?: string;
 }
 
 export interface GroceryItem {
@@ -167,165 +204,19 @@ export const DEFAULT_CATEGORIES: Category[] = [
 
 export const INITIAL_ACCOUNTS: Account[] = [
   {
-    id: 'acc-sbi',
-    name: 'SBI Primary Salary',
-    type: 'bank',
-    balance: 68450,
-    accountNumberMasked: '•••• 4892',
-    icon: 'business',
-    color: '#2563EB',
-  },
-  {
-    id: 'acc-hdfc',
-    name: 'HDFC Savings',
-    type: 'bank',
-    balance: 34200,
-    accountNumberMasked: '•••• 8134',
-    icon: 'wallet',
-    color: '#059669',
-  },
-  {
     id: 'acc-cash',
-    name: 'Cash in Hand',
+    name: 'Cash / Primary Account',
     type: 'cash',
-    balance: 4500,
-    icon: 'cash',
-    color: '#D97706',
-  },
-  {
-    id: 'acc-card',
-    name: 'HDFC Millennia Card',
-    type: 'credit_card',
-    balance: 12350, // Outstanding
-    creditLimit: 150000,
-    accountNumberMasked: '•••• 7029',
-    icon: 'card',
-    color: '#DC2626',
-  },
-];
-
-export const INITIAL_BUDGETS: Budget[] = [
-  { id: 'b-overall', name: 'Overall Monthly Budget', amount: 50000, period: 'monthly', alertThresholdPercent: 80 },
-  { id: 'b-food', name: 'Food & Dining', categoryId: 'food', amount: 8000, period: 'monthly', alertThresholdPercent: 80 },
-  { id: 'b-shopping', name: 'Shopping & Gear', categoryId: 'shopping', amount: 6000, period: 'monthly', alertThresholdPercent: 80 },
-  { id: 'b-transport', name: 'Fuel & Commute', categoryId: 'transport', amount: 4000, period: 'monthly', alertThresholdPercent: 80 },
-];
-
-export const INITIAL_BILLS: Bill[] = [
-  {
-    id: 'bill-1',
-    title: 'TNEB Electricity Bill',
-    amount: 1850,
-    categoryId: 'utilities',
-    dueDate: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
-    isPaid: false,
-    recurring: 'monthly',
-  },
-  {
-    id: 'bill-2',
-    title: 'Airtel Xstream Fiber',
-    amount: 1179,
-    categoryId: 'utilities',
-    dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-    isPaid: false,
-    recurring: 'monthly',
-  },
-  {
-    id: 'bill-3',
-    title: 'Netflix Premium & Prime',
-    amount: 799,
-    categoryId: 'entertainment',
-    dueDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
-    isPaid: false,
-    recurring: 'monthly',
-  },
-];
-
-export const INITIAL_GOALS: SavingsGoal[] = [
-  {
-    id: 'goal-1',
-    name: 'Emergency Reserve (6 Months)',
-    targetAmount: 150000,
-    currentAmount: 85000,
-    targetDate: '2026-12-31',
-    categoryIcon: 'shield-checkmark',
+    balance: 0,
+    icon: 'wallet',
     color: '#10B981',
   },
-  {
-    id: 'goal-2',
-    name: 'MacBook Pro M3 Max',
-    targetAmount: 180000,
-    currentAmount: 72000,
-    targetDate: '2026-11-30',
-    categoryIcon: 'laptop',
-    color: '#3B82F6',
-  },
 ];
 
-const getTodayDate = () => new Date().toISOString().slice(0, 10);
-
-export const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'tx-1',
-    type: 'income',
-    title: 'October Salary Inflow',
-    amount: 120000,
-    categoryId: 'salary',
-    accountId: 'acc-sbi',
-    date: getTodayDate(),
-    paymentMethod: 'Net Banking',
-    merchant: 'Sagasoft Technologies',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'tx-2',
-    type: 'expense',
-    title: 'Monthly Organic Groceries',
-    amount: 3450,
-    categoryId: 'groceries',
-    accountId: 'acc-sbi',
-    date: getTodayDate(),
-    paymentMethod: 'UPI',
-    merchant: 'Reliance Smart Superstore',
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: 'tx-3',
-    type: 'expense',
-    title: 'HP Auto Fuel Tank Refill',
-    amount: 800,
-    categoryId: 'transport',
-    accountId: 'acc-sbi',
-    date: getTodayDate(),
-    paymentMethod: 'UPI',
-    merchant: 'HP Fuel Station',
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: 'tx-4',
-    type: 'expense',
-    title: 'Weekend Team Dinner & Treats',
-    amount: 1250,
-    categoryId: 'food',
-    accountId: 'acc-hdfc',
-    date: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
-    paymentMethod: 'UPI',
-    merchant: 'Anjappar Chettinad',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: 'tx-5',
-    type: 'expense',
-    title: 'Mechanical Keyboard & Accessories',
-    amount: 4200,
-    categoryId: 'shopping',
-    accountId: 'acc-card',
-    date: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10),
-    paymentMethod: 'Card',
-    merchant: 'Amazon India',
-    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-  },
-];
+export const INITIAL_BUDGETS: Budget[] = [];
+export const INITIAL_BILLS: Bill[] = [];
+export const INITIAL_GOALS: SavingsGoal[] = [];
+export const INITIAL_TRANSACTIONS: Transaction[] = [];
 
 // ==========================================
 // Store Interface & Implementation
@@ -347,9 +238,12 @@ export interface WealthState {
   goldItems: GoldHolding[];
   trips: Trip[];
   groceries: GroceryItem[];
+  isStealthMode: boolean;
+  toggleStealthMode: () => void;
 
   // Transaction Management
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => void;
+  updateTransaction: (id: string, updatedFields: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => void;
   deleteTransaction: (id: string) => void;
 
   // Account Management
@@ -370,9 +264,17 @@ export interface WealthState {
   // Goal Management
   addGoal: (goal: Omit<SavingsGoal, 'id' | 'currentAmount'>) => void;
   depositToGoal: (goalId: string, amount: number, accountId: string) => void;
+  withdrawFromGoal: (goalId: string, amount: number, accountId: string, reason?: string) => void;
   deleteGoal: (id: string) => void;
 
-  // Legacy Actions
+  // Peer Debts (Friends Khata)
+  peerDebts: PeerDebt[];
+  addPeerDebt: (debt: Omit<PeerDebt, 'id' | 'status' | 'paidAmount'>) => void;
+  settlePeerDebt: (id: string) => void;
+  recordPeerDebtPartialPayment: (id: string, partialAmount: number) => void;
+  deletePeerDebt: (id: string) => void;
+
+  // Legacy Actions & Enhanced Trips
   setMonthlySalary: (amount: number) => void;
   setGoldRate: (rate: number) => void;
   addLoan: (params: {
@@ -387,30 +289,47 @@ export interface WealthState {
   deleteLoan: (loanId: string) => void;
   addGoldItem: (item: Omit<GoldHolding, 'id' | 'sovereigns'>) => void;
   deleteGoldItem: (id: string) => void;
-  addTrip: (name: string, budget: number, members: string[]) => void;
+  addTrip: (
+    name: string,
+    budget: number,
+    members: string[],
+    initialContributions?: { memberName: string; amount: number }[],
+    tripType?: 'solo' | 'group'
+  ) => void;
+  deleteTrip: (id: string) => void;
+  addTripMember: (tripId: string, memberName: string) => void;
+  addTripContribution: (tripId: string, memberName: string, amount: number) => void;
   addTripExpense: (tripId: string, expense: Omit<TripExpense, 'id'>) => void;
+  deleteTripExpense: (tripId: string, expenseId: string) => void;
+  completeTrip: (tripId: string) => void;
+  toggleTripStatus: (tripId: string) => void;
   addGroceryItem: (name: string, approxPrice: number, category: GroceryItem['category']) => void;
   toggleGroceryItem: (id: string) => void;
   clearPurchasedGroceries: () => void;
+  restoreBackupData: (backupJson: string) => boolean;
+  resetAllData: () => void;
 }
 
 export const useWealthStore = create<WealthState>()(
   persist(
     (set, get) => ({
-      // Initialize with Seed Data
+      // Initialize with completely fresh empty data
       accounts: INITIAL_ACCOUNTS,
-      transactions: INITIAL_TRANSACTIONS,
+      transactions: [],
       categories: DEFAULT_CATEGORIES,
-      budgets: INITIAL_BUDGETS,
-      bills: INITIAL_BILLS,
-      savingsGoals: INITIAL_GOALS,
+      budgets: [],
+      bills: [],
+      savingsGoals: [],
 
-      monthlySalary: 120000,
+      monthlySalary: 0,
       currentGoldRatePerGram: 7850,
       loans: [],
       goldItems: [],
       trips: [],
+      peerDebts: [],
       groceries: [],
+      isStealthMode: false,
+      toggleStealthMode: () => set((state) => ({ isStealthMode: !state.isStealthMode })),
 
       // -------------------------------------------------------------
       // Transaction Actions (Atomic Balance Updates)
@@ -453,6 +372,58 @@ export const useWealthStore = create<WealthState>()(
           return {
             transactions: [newTx, ...state.transactions],
             accounts: updatedAccounts,
+          };
+        });
+      },
+
+      updateTransaction: (id, updatedFields) => {
+        set((state) => {
+          const oldTx = state.transactions.find((t) => t.id === id);
+          if (!oldTx) return state;
+
+          const newTx = { ...oldTx, ...updatedFields };
+
+          // 1. Revert oldTx balance changes
+          let tempAccounts = state.accounts.map((acc) => {
+            if (oldTx.type === 'expense' && acc.id === oldTx.accountId) {
+              const newBal = acc.type === 'credit_card' ? acc.balance - oldTx.amount : acc.balance + oldTx.amount;
+              return { ...acc, balance: newBal };
+            }
+            if (oldTx.type === 'income' && acc.id === oldTx.accountId) {
+              return { ...acc, balance: acc.balance - oldTx.amount };
+            }
+            if (oldTx.type === 'transfer') {
+              if (acc.id === oldTx.accountId) return { ...acc, balance: acc.balance + oldTx.amount };
+              if (acc.id === oldTx.toAccountId) {
+                const newBal = acc.type === 'credit_card' ? acc.balance + oldTx.amount : acc.balance - oldTx.amount;
+                return { ...acc, balance: newBal };
+              }
+            }
+            return acc;
+          });
+
+          // 2. Apply newTx balance changes
+          tempAccounts = tempAccounts.map((acc) => {
+            if (newTx.type === 'expense' && acc.id === newTx.accountId) {
+              const newBal = acc.type === 'credit_card' ? acc.balance + newTx.amount : acc.balance - newTx.amount;
+              return { ...acc, balance: newBal };
+            }
+            if (newTx.type === 'income' && acc.id === newTx.accountId) {
+              return { ...acc, balance: acc.balance + newTx.amount };
+            }
+            if (newTx.type === 'transfer') {
+              if (acc.id === newTx.accountId) return { ...acc, balance: acc.balance - newTx.amount };
+              if (acc.id === newTx.toAccountId) {
+                const newBal = acc.type === 'credit_card' ? Math.max(0, acc.balance - newTx.amount) : acc.balance + newTx.amount;
+                return { ...acc, balance: newBal };
+              }
+            }
+            return acc;
+          });
+
+          return {
+            transactions: state.transactions.map((t) => (t.id === id ? newTx : t)),
+            accounts: tempAccounts,
           };
         });
       },
@@ -534,6 +505,12 @@ export const useWealthStore = create<WealthState>()(
           isPaid: false,
         };
         set((state) => ({ bills: [...state.bills, newBill] }));
+        try {
+          const { NotificationService } = require('@/core/utils/notification-service');
+          NotificationService.scheduleBillReminder(newBill.id, newBill.title, newBill.amount, newBill.dueDate);
+        } catch (e) {
+          console.warn('[WealthStore] Notification schedule note:', e);
+        }
       },
 
       payBill: (billId, accountId) => {
@@ -562,6 +539,12 @@ export const useWealthStore = create<WealthState>()(
 
       deleteBill: (id) => {
         set((state) => ({ bills: state.bills.filter((b) => b.id !== id) }));
+        try {
+          const { NotificationService } = require('@/core/utils/notification-service');
+          NotificationService.cancelReminder(`bill_reminder_${id}`);
+        } catch (e) {
+          console.warn('[WealthStore] Notification cancel note:', e);
+        }
       },
 
       // -------------------------------------------------------------
@@ -601,6 +584,79 @@ export const useWealthStore = create<WealthState>()(
 
       deleteGoal: (id) => {
         set((state) => ({ savingsGoals: state.savingsGoals.filter((g) => g.id !== id) }));
+      },
+
+      withdrawFromGoal: (goalId, amount, accountId, reason) => {
+        const goal = get().savingsGoals.find((g) => g.id === goalId);
+        if (!goal || goal.currentAmount < amount) return;
+
+        // Credit to target account via income transaction
+        get().addTransaction({
+          type: 'income',
+          title: `Goal Withdrawal: ${goal.name}${reason ? ` (${reason})` : ''}`,
+          amount,
+          categoryId: 'investments',
+          accountId,
+          date: new Date().toISOString().slice(0, 10),
+          paymentMethod: 'Net Banking',
+        });
+
+        // Deduct from goal
+        set((state) => ({
+          savingsGoals: state.savingsGoals.map((g) =>
+            g.id === goalId ? { ...g, currentAmount: Math.max(0, g.currentAmount - amount) } : g
+          ),
+        }));
+      },
+
+      // -------------------------------------------------------------
+      // Friends Khata (Peer Debt) Actions
+      // -------------------------------------------------------------
+      addPeerDebt: (debtData) => {
+        const newDebt: PeerDebt = {
+          ...debtData,
+          id: `debt-${Date.now()}`,
+          paidAmount: 0,
+          status: 'pending',
+        };
+        set((state) => ({ peerDebts: [newDebt, ...state.peerDebts] }));
+      },
+
+      settlePeerDebt: (id) => {
+        set((state) => ({
+          peerDebts: state.peerDebts.map((d) =>
+            d.id === id
+              ? {
+                  ...d,
+                  paidAmount: d.amount,
+                  status: 'settled',
+                  settledDate: new Date().toISOString().slice(0, 10),
+                }
+              : d
+          ),
+        }));
+      },
+
+      recordPeerDebtPartialPayment: (id, partialAmount) => {
+        if (partialAmount <= 0) return;
+        set((state) => ({
+          peerDebts: state.peerDebts.map((d) => {
+            if (d.id !== id) return d;
+            const currentPaid = d.paidAmount || 0;
+            const newPaid = currentPaid + partialAmount;
+            const isSettled = newPaid >= d.amount;
+            return {
+              ...d,
+              paidAmount: Math.min(d.amount, newPaid),
+              status: isSettled ? 'settled' : 'pending',
+              settledDate: isSettled ? new Date().toISOString().slice(0, 10) : d.settledDate,
+            };
+          }),
+        }));
+      },
+
+      deletePeerDebt: (id) => {
+        set((state) => ({ peerDebts: state.peerDebts.filter((d) => d.id !== id) }));
       },
 
       // -------------------------------------------------------------
@@ -698,22 +754,90 @@ export const useWealthStore = create<WealthState>()(
         set((state) => ({ goldItems: state.goldItems.filter((g) => g.id !== id) }));
       },
 
-      addTrip: (name, budget, members) => {
+      addTrip: (name, budget, members, initialContributions = [], tripType = 'group') => {
+        const isSolo = tripType === 'solo';
+        const finalMembers = isSolo ? ['Me (Self)'] : members.length > 0 ? members : ['Me (Self)'];
         const newTrip: Trip = {
           id: `trip-${Date.now()}`,
           name,
           budget,
-          members,
+          tripType,
+          members: finalMembers,
+          startDate: new Date().toISOString().slice(0, 10),
+          contributions: isSolo
+            ? []
+            : initialContributions.map((c, idx) => ({
+                id: `tc-${Date.now()}-${idx}`,
+                memberName: c.memberName,
+                amount: c.amount,
+                date: new Date().toISOString().slice(0, 10),
+              })),
           expenses: [],
           status: 'ongoing',
         };
         set((state) => ({ trips: [newTrip, ...state.trips] }));
       },
 
+      deleteTrip: (id) => {
+        set((state) => ({ trips: state.trips.filter((t) => t.id !== id) }));
+      },
+
+      addTripContribution: (tripId, memberName, amount) => {
+        const newContrib: TripContribution = {
+          id: `tc-${Date.now()}`,
+          memberName,
+          amount,
+          date: new Date().toISOString().slice(0, 10),
+        };
+        set((state) => ({
+          trips: state.trips.map((t) =>
+            t.id === tripId ? { ...t, contributions: [newContrib, ...t.contributions] } : t
+          ),
+        }));
+      },
+
       addTripExpense: (tripId, expense) => {
         set((state) => ({
           trips: state.trips.map((t) =>
             t.id === tripId ? { ...t, expenses: [{ ...expense, id: `te-${Date.now()}` }, ...t.expenses] } : t
+          ),
+        }));
+      },
+
+      deleteTripExpense: (tripId, expenseId) => {
+        set((state) => ({
+          trips: state.trips.map((t) =>
+            t.id === tripId ? { ...t, expenses: t.expenses.filter((e) => e.id !== expenseId) } : t
+          ),
+        }));
+      },
+
+      addTripMember: (tripId, memberName) => {
+        const trimmed = memberName.trim();
+        if (!trimmed) return;
+        set((state) => ({
+          trips: state.trips.map((t) =>
+            t.id === tripId && !t.members.includes(trimmed)
+              ? { ...t, members: [...t.members, trimmed] }
+              : t
+          ),
+        }));
+      },
+
+      completeTrip: (tripId) => {
+        set((state) => ({
+          trips: state.trips.map((t) =>
+            t.id === tripId ? { ...t, status: 'completed' } : t
+          ),
+        }));
+      },
+
+      toggleTripStatus: (tripId) => {
+        set((state) => ({
+          trips: state.trips.map((t) =>
+            t.id === tripId
+              ? { ...t, status: t.status === 'completed' ? 'ongoing' : 'completed' }
+              : t
           ),
         }));
       },
@@ -740,9 +864,49 @@ export const useWealthStore = create<WealthState>()(
       clearPurchasedGroceries: () => {
         set((state) => ({ groceries: state.groceries.filter((g) => !g.isPurchased) }));
       },
+
+      restoreBackupData: (backupJson: string) => {
+        try {
+          const parsed = JSON.parse(backupJson);
+          if (!parsed || typeof parsed !== 'object') return false;
+
+          set({
+            accounts: Array.isArray(parsed.accounts) ? parsed.accounts : get().accounts,
+            transactions: Array.isArray(parsed.transactions) ? parsed.transactions : get().transactions,
+            budgets: Array.isArray(parsed.budgets) ? parsed.budgets : get().budgets,
+            bills: Array.isArray(parsed.bills) ? parsed.bills : get().bills,
+            savingsGoals: Array.isArray(parsed.savingsGoals) ? parsed.savingsGoals : get().savingsGoals,
+            loans: Array.isArray(parsed.loans) ? parsed.loans : get().loans,
+            goldItems: Array.isArray(parsed.goldItems) ? parsed.goldItems : get().goldItems,
+            trips: Array.isArray(parsed.trips) ? parsed.trips : get().trips,
+            peerDebts: Array.isArray(parsed.peerDebts) ? parsed.peerDebts : get().peerDebts,
+            monthlySalary:
+              typeof parsed.monthlySalary === 'number' ? parsed.monthlySalary : get().monthlySalary,
+          });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+
+      resetAllData: () => {
+        set({
+          accounts: INITIAL_ACCOUNTS,
+          transactions: [],
+          budgets: [],
+          bills: [],
+          savingsGoals: [],
+          monthlySalary: 0,
+          loans: [],
+          goldItems: [],
+          trips: [],
+          peerDebts: [],
+          groceries: [],
+        });
+      },
     }),
     {
-      name: 'personal-app:finance-store-v3',
+      name: 'personal-app:finance-store-fresh-v1',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

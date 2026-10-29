@@ -28,7 +28,8 @@ interface AuthState {
   // Actions
   initializeAuth: () => Promise<void>;
   signUp: (name: string, email: string, pin: string, enableBiometrics: boolean) => Promise<boolean>;
-  signInWithGoogle: (googleUser: { name: string; email: string; photoUrl?: string }) => Promise<boolean>;
+  signInWithGoogle: (googleUser: { name: string; email: string; photoUrl?: string }, customPin?: string) => Promise<boolean>;
+  updatePin: (newPin: string) => Promise<boolean>;
   signInWithPin: (pin: string) => Promise<boolean>;
   signInWithBiometrics: () => Promise<boolean>;
   completeOnboarding: () => Promise<void>;
@@ -105,6 +106,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
       await AsyncStorage.setItem(BIOMETRIC_ENABLED_KEY, enableBiometrics ? 'true' : 'false');
 
+      // Sync active identity to Career Profile
+      try {
+        const { useCandidateProfileStore } = require('../../career/state/candidate-profile-store');
+        useCandidateProfileStore.getState().syncWithAuthUser(profile.name, profile.email);
+      } catch (e) {
+        console.warn('[AuthStore] syncWithAuthUser failed in signUp:', e);
+      }
+
       set({
         user: profile,
         hasAccount: true,
@@ -120,7 +129,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signInWithGoogle: async (googleUser) => {
+  signInWithGoogle: async (googleUser, customPin) => {
     try {
       const profile: UserProfile = {
         name: googleUser.name,
@@ -132,8 +141,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
       const existingPin = await SecureStore.getItemAsync(PIN_SECURE_KEY);
-      if (!existingPin) {
+      if (customPin && customPin.length >= 4) {
+        await SecureStore.setItemAsync(PIN_SECURE_KEY, customPin);
+      } else if (!existingPin) {
         await SecureStore.setItemAsync(PIN_SECURE_KEY, '1234');
+      }
+
+      // Sync active identity to Career Profile
+      try {
+        const { useCandidateProfileStore } = require('../../career/state/candidate-profile-store');
+        useCandidateProfileStore.getState().syncWithAuthUser(profile.name, profile.email);
+      } catch (e) {
+        console.warn('[AuthStore] syncWithAuthUser failed in signInWithGoogle:', e);
       }
 
       const storedOnboarding = await AsyncStorage.getItem(ONBOARDING_COMPLETED_KEY);
@@ -148,6 +167,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return true;
     } catch (err) {
       console.error('[AuthStore] Google SignIn failed:', err);
+      return false;
+    }
+  },
+
+  updatePin: async (newPin: string) => {
+    try {
+      if (!newPin || newPin.length < 4) return false;
+      await SecureStore.setItemAsync(PIN_SECURE_KEY, newPin);
+      return true;
+    } catch (e) {
+      console.error('[AuthStore] updatePin error:', e);
       return false;
     }
   },
@@ -200,6 +230,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await AsyncStorage.removeItem(USER_PROFILE_KEY);
       await AsyncStorage.removeItem(BIOMETRIC_ENABLED_KEY);
       await AsyncStorage.removeItem(ONBOARDING_COMPLETED_KEY);
+
+      // Wipe candidate profile storage
+      try {
+        const { useCandidateProfileStore } = require('../../career/state/candidate-profile-store');
+        useCandidateProfileStore.getState().resetProfile();
+      } catch (e) {
+        console.warn('[AuthStore] resetProfile failed:', e);
+      }
+      await AsyncStorage.removeItem('aayon:candidate-profile-v3');
+      await AsyncStorage.removeItem('personal-app:candidate-profile-v2');
 
       set({
         user: null,

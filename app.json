@@ -14,10 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bharathi.personalapp"
+      "bundleIdentifier": "com.aayon.app"
     },
     "android": {
-      "package": "com.bharathi.personalapp",
+      "package": "com.aayon.app",
       "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#09090B",

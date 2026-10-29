@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
-import { BHARATHI_CANDIDATE_PROFILE } from '@/core/data/candidate-profile';
 
 // ==========================================
 // Career Profile Types
@@ -136,100 +135,31 @@ export interface CandidateProfileState {
   removeSkill: (skill: string) => void;
   removeResume: () => void;
   updateProfile: (fields: Partial<CandidateProfileState>) => void;
+  syncWithAuthUser: (name: string, email: string) => void;
+  resetProfile: () => void;
 }
 
 // ==========================================
-// Initial Real Seed Data for Bharathi V
+// Initial Clean Defaults for Multi-User Play Store Release
 // ==========================================
 
-const INITIAL_EDUCATIONS: EducationRecord[] = [
-  {
-    id: 'edu-1',
-    qualification: 'PG Degree',
-    degree: 'Master of Computer Applications (MCA)',
-    college: 'University of Madras',
-    specialization: 'Computer Applications & Software Engineering',
-    startYear: '2022',
-    graduationYear: '2024',
-    grade: '8.4 CGPA',
-    status: 'Completed',
-  },
-  {
-    id: 'edu-2',
-    qualification: 'UG Degree',
-    degree: 'B.Sc. Computer Science',
-    college: 'Thiruvalluvar University',
-    specialization: 'Computer Science',
-    startYear: '2019',
-    graduationYear: '2022',
-    grade: '8.1 CGPA',
-    status: 'Completed',
-  },
-];
-
-const INITIAL_EXPERIENCES: WorkExperienceRecord[] = [
-  {
-    id: 'exp-1',
-    companyName: 'Sagasoft Technologies Pvt Ltd',
-    jobTitle: 'Frontend Developer & Lead (UI/UX Architect)',
-    employmentType: 'Full-time',
-    startDate: 'Aug 2024',
-    endDate: 'Present',
-    isCurrentJob: true,
-    workLocation: 'Chennai / Viluppuram',
-    workMode: 'Hybrid',
-    responsibilities:
-      'Spearheading frontend architecture for enterprise SaaS products. Built Saga Mail (React Native & Hermes push engine) and SagaID Admin Console with OIDC authentication.',
-    skillsUsed: ['React.js', 'Next.js', 'React Native', 'Expo', 'TypeScript', 'Zustand', 'OIDC'],
-    noticePeriod: '30 Days (Negotiable)',
-    currentCTC: '18 LPA',
-    expectedCTC: '24 - 30 LPA',
-  },
-];
-
-const INITIAL_RESUMES: ResumeItem[] = [
-  {
-    id: 'res-1',
-    name: 'Frontend Lead Resume (React • Vue • Next.js)',
-    targetRole: 'Frontend Developer & Lead',
-    fileName: 'Bharathi_V_Frontend_Lead_Resume.pdf',
-    uploadedAt: '2026-10-25',
-    isDefault: true,
-    fileSize: 106032,
-  },
-  {
-    id: 'res-2',
-    name: 'Mobile Engineering Resume (React Native • Expo)',
-    targetRole: 'Senior React Native Developer',
-    fileName: 'Bharathi_V_ReactNative_Mobile_Resume.pdf',
-    uploadedAt: '2026-10-20',
-    isDefault: false,
-    fileSize: 98400,
-  },
-  {
-    id: 'res-3',
-    name: 'Full Stack Engineer Resume (React + FastAPI)',
-    targetRole: 'Full Stack Engineer',
-    fileName: 'Bharathi_V_FullStack_Resume.pdf',
-    uploadedAt: '2026-10-15',
-    isDefault: false,
-    fileSize: 112500,
-  },
-];
+const INITIAL_EDUCATIONS: EducationRecord[] = [];
+const INITIAL_EXPERIENCES: WorkExperienceRecord[] = [];
+const INITIAL_RESUMES: ResumeItem[] = [];
 
 const INITIAL_PREFERENCES: JobPreferences = {
   targetJobTitles: [
-    'Frontend Developer & Lead',
-    'Senior React / React Native Engineer',
+    'Software Engineer',
+    'Frontend Developer',
+    'Mobile Application Engineer (React Native)',
     'Full Stack Engineer',
-    'Vue.js / Next.js Specialist',
   ],
-  targetKeywords: ['React', 'React Native', 'Next.js', 'Vue.js', 'TypeScript', 'FastAPI', 'Hermes'],
-  preferredLocations: ['Chennai', 'Bengaluru', 'Remote'],
+  targetKeywords: ['React', 'React Native', 'TypeScript', 'JavaScript', 'Next.js', 'Node.js', 'Tailwind CSS'],
+  preferredLocations: ['Remote', 'Bengaluru', 'Chennai', 'Hyderabad'],
   workModes: ['Remote', 'Hybrid'],
   totalExperience: '2+ years',
-  minimumSalaryLPA: 18,
-  maximumSalaryLPA: 32,
+  minimumSalaryLPA: 12,
+  maximumSalaryLPA: 28,
   skillsMatchThreshold: 75,
   autoApplyEnabled: true,
   dailyApplicationLimit: 15,
@@ -239,7 +169,7 @@ const INITIAL_ANSWER_BANK: AnswerBankItem[] = [
   {
     id: 'ans-1',
     question: 'Are you legally authorized to work in India?',
-    answer: 'Yes, Indian citizen with full authorization to work anywhere in India.',
+    answer: 'Yes, authorized to work anywhere in India with standard tax and employment compliance.',
     category: 'Authorization',
     isVerified: true,
   },
@@ -253,35 +183,35 @@ const INITIAL_ANSWER_BANK: AnswerBankItem[] = [
   {
     id: 'ans-3',
     question: 'What is your current notice period?',
-    answer: '30 Days (Officially negotiable with early buyout option).',
+    answer: '30 Days (Negotiable with early release option if required).',
     category: 'Notice Period',
     isVerified: true,
   },
   {
     id: 'ans-4',
     question: 'What is your expected CTC (annual compensation)?',
-    answer: '₹24 - 30 LPA (Negotiable based on stock options & benefits).',
+    answer: 'Competitive and aligned with market standards for this role, open to discussion.',
     category: 'Salary',
     isVerified: true,
   },
   {
     id: 'ans-5',
-    question: 'How many years of experience do you have with React & React Native?',
-    answer: 'Over 2+ years leading production web (React 19, Next.js) and mobile (Expo, Hermes, Zustand) apps.',
+    question: 'How many years of experience do you have with modern web & mobile stacks?',
+    answer: 'Over 2+ years building production applications with React, React Native, and TypeScript.',
     category: 'Technical',
     isVerified: true,
   },
   {
     id: 'ans-6',
-    question: 'Are you willing to work in Hybrid mode in Chennai or Bengaluru?',
-    answer: 'Yes, fully open to Hybrid in Chennai/Bengaluru or 100% Remote.',
+    question: 'Are you open to Remote or Hybrid work arrangement?',
+    answer: 'Yes, fully comfortable working in Remote or Hybrid environments.',
     category: 'General',
     isVerified: true,
   },
   {
     id: 'ans-7',
     question: 'Why are you interested in this role?',
-    answer: 'Eager to leverage my expertise in scalable frontend architecture (Hermes push engine, RSC, OIDC security) to accelerate product engineering.',
+    answer: 'Eager to leverage my engineering expertise and problem-solving skills to accelerate team goals and deliver high-impact software.',
     category: 'General',
     isVerified: true,
   },
@@ -290,17 +220,17 @@ const INITIAL_ANSWER_BANK: AnswerBankItem[] = [
 export const useCandidateProfileStore = create<CandidateProfileState>()(
   persist(
     (set, get) => ({
-      // Personal Details
-      name: BHARATHI_CANDIDATE_PROFILE.name,
-      email: BHARATHI_CANDIDATE_PROFILE.email,
-      phone: BHARATHI_CANDIDATE_PROFILE.phone,
-      currentCity: 'Viluppuram',
-      state: 'Tamil Nadu',
+      // Personal Details - Dynamically populated from Auth User
+      name: '',
+      email: '',
+      phone: '',
+      currentCity: '',
+      state: '',
       country: 'India',
-      linkedinUrl: 'https://linkedin.com/in/bharathiv1403',
-      githubUrl: 'https://github.com/Bharathiv1403',
-      portfolioUrl: 'https://bharathi.dev',
-      workAuthorization: 'Authorized (Indian Citizen)',
+      linkedinUrl: '',
+      githubUrl: '',
+      portfolioUrl: '',
+      workAuthorization: 'Authorized',
 
       // Collections
       educations: INITIAL_EDUCATIONS,
@@ -308,10 +238,10 @@ export const useCandidateProfileStore = create<CandidateProfileState>()(
       skillsList: [
         { id: 'sk-1', name: 'React.js / Next.js', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
         { id: 'sk-2', name: 'React Native / Expo', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
-        { id: 'sk-3', name: 'Vue.js (Pinia)', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
-        { id: 'sk-4', name: 'TypeScript', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
-        { id: 'sk-5', name: 'FastAPI / Python', proficiency: 'Intermediate', yearsOfExperience: '1+ yrs' },
-        { id: 'sk-6', name: 'Zustand / Redux', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
+        { id: 'sk-3', name: 'TypeScript', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
+        { id: 'sk-4', name: 'JavaScript', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
+        { id: 'sk-5', name: 'Node.js / REST APIs', proficiency: 'Intermediate', yearsOfExperience: '1+ yrs' },
+        { id: 'sk-6', name: 'UI / UX Design', proficiency: 'Intermediate', yearsOfExperience: '1+ yrs' },
         { id: 'sk-7', name: 'Tailwind CSS', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
       ],
       resumes: INITIAL_RESUMES,
@@ -319,27 +249,24 @@ export const useCandidateProfileStore = create<CandidateProfileState>()(
       answerBank: INITIAL_ANSWER_BANK,
 
       // Legacy compatibility fields
-      targetRole: 'Frontend Developer & Lead',
-      yearsOfExperience: BHARATHI_CANDIDATE_PROFILE.yearsOfExperience,
-      noticePeriod: BHARATHI_CANDIDATE_PROFILE.noticePeriod,
-      expectedCTC: BHARATHI_CANDIDATE_PROFILE.expectedCTC,
+      targetRole: 'Software Engineer',
+      yearsOfExperience: '2+ years',
+      noticePeriod: '30 Days',
+      expectedCTC: '15 - 25 LPA',
       skills: [
         'React.js',
         'Next.js',
         'TypeScript',
         'React Native',
         'Expo',
-        'Vue.js',
+        'JavaScript',
         'Tailwind CSS',
-        'Zustand',
-        'FastAPI',
-        'Hermes',
-        'OIDC / Auth',
+        'REST APIs',
       ],
-      resumeFileName: 'Bharathi_V_Frontend_Lead_Resume.pdf',
+      resumeFileName: null,
       resumeUri: null,
-      resumeFileSize: 106032,
-      resumeUploadedAt: new Date().toISOString().split('T')[0],
+      resumeFileSize: null,
+      resumeUploadedAt: null,
 
       updatePersonalInfo: (fields) => set((state) => ({ ...state, ...fields })),
       updatePreferences: (prefs) =>
@@ -451,9 +378,32 @@ export const useCandidateProfileStore = create<CandidateProfileState>()(
           resumeFileSize: null,
           resumeUploadedAt: null,
         }),
+
+      syncWithAuthUser: (name, email) => {
+        if (!name && !email) return;
+        set((state) => ({
+          name: name ? name.trim() : state.name,
+          email: email ? email.trim().toLowerCase() : state.email,
+        }));
+      },
+
+      resetProfile: () => {
+        set({
+          name: '',
+          email: '',
+          phone: '',
+          educations: [],
+          experiences: [],
+          resumes: [],
+          resumeFileName: null,
+          resumeUri: null,
+          resumeFileSize: null,
+          resumeUploadedAt: null,
+        });
+      },
     }),
     {
-      name: 'personal-app:candidate-profile-v2',
+      name: 'aayon:candidate-profile-v3',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

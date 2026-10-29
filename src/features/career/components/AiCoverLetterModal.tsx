@@ -15,6 +15,8 @@ import * as Haptics from 'expo-haptics';
 import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
 import { AIService } from '@/core/utils/ai-service';
+import { useAiConfigStore } from '@/core/state/ai-config-store';
+import { ApiKeyModal } from '@/core/components/ApiKeyModal';
 import { JobApplicationItem } from '../state/job-store';
 
 interface AiCoverLetterModalProps {
@@ -32,6 +34,10 @@ export const AiCoverLetterModal: React.FC<AiCoverLetterModalProps> = ({
 }) => {
   const [coverLetter, setCoverLetter] = useState('');
   const [loading, setLoading] = useState(false);
+  const [apiKeyModalVisible, setApiKeyModalVisible] = useState(false);
+
+  const isAiConfigured = useAiConfigStore((s) => s.isConfigured);
+  const hasKey = isAiConfigured || AIService.hasConfiguredKey();
 
   useEffect(() => {
     if (visible && job) {
@@ -79,10 +85,30 @@ export const AiCoverLetterModal: React.FC<AiCoverLetterModalProps> = ({
                 {job.role} • {job.companyName}
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => setApiKeyModalVisible(true)}
+                style={styles.keyBtn}
+              >
+                <Ionicons name="key" size={15} color={hasKey ? '#10B981' : '#F59E0B'} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <Ionicons name="close" size={20} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
           </View>
+
+          {!hasKey && (
+            <TouchableOpacity
+              style={styles.keyBanner}
+              onPress={() => setApiKeyModalVisible(true)}
+            >
+              <Ionicons name="key-outline" size={14} color="#F59E0B" />
+              <Text style={styles.keyBannerText}>
+                Add free Gemini / Groq key to unlock customized AI letters.
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Body */}
           <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
@@ -127,6 +153,12 @@ export const AiCoverLetterModal: React.FC<AiCoverLetterModalProps> = ({
               <Text style={styles.applyButtonText}>1-Click Apply Now 🚀</Text>
             </TouchableOpacity>
           </View>
+
+          <ApiKeyModal
+            visible={apiKeyModalVisible}
+            onClose={() => setApiKeyModalVisible(false)}
+            onSuccess={() => loadCoverLetter()}
+          />
         </View>
       </View>
     </Modal>
@@ -231,5 +263,28 @@ const styles = StyleSheet.create({
     color: Colors.textInverse,
     fontSize: 13,
     fontWeight: '700',
+  },
+  keyBtn: {
+    padding: 6,
+    borderRadius: Radii.sm,
+    backgroundColor: '#1E1E24',
+  },
+  keyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#272010',
+    borderWidth: 1,
+    borderColor: '#784E0E',
+    borderRadius: Radii.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 8,
+  },
+  keyBannerText: {
+    fontSize: 11,
+    color: '#FCD34D',
+    flex: 1,
+    fontWeight: '500',
   },
 });

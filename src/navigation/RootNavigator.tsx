@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, ActivityIndicator, StyleSheet, AppState, AppStateStatus } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
@@ -10,6 +10,8 @@ import { OnboardingScreen } from '@/features/auth/screens/OnboardingScreen';
 import { SettingsScreen } from '@/features/settings/screens/SettingsScreen';
 import { TodoListScreen } from '@/features/todo/screens/TodoListScreen';
 import { useAuthStore } from '@/features/auth/state/auth-store';
+import { useAiConfigStore } from '@/core/state/ai-config-store';
+import { NotificationService } from '@/core/utils/notification-service';
 import { Colors } from '@/core/design-system/tokens/colors';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -33,10 +35,39 @@ export const RootNavigator: React.FC = () => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasCompletedOnboarding = useAuthStore((s) => s.hasCompletedOnboarding);
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
+  const initializeAiConfig = useAiConfigStore((s) => s.initialize);
+
+  const backgroundTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     initializeAuth();
-  }, [initializeAuth]);
+    initializeAiConfig();
+
+    NotificationService.requestPermissions().then((granted) => {
+      if (granted) {
+        NotificationService.scheduleDailyBriefing();
+      }
+    });
+
+    const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        backgroundTimeRef.current = Date.now();
+      } else if (nextState === 'active') {
+        if (backgroundTimeRef.current) {
+          const elapsed = (Date.now() - backgroundTimeRef.current) / 1000;
+          // Auto-lock vault if app was in background for 45+ seconds
+          if (elapsed >= 45 && useAuthStore.getState().isAuthenticated) {
+            useAuthStore.getState().signOut();
+          }
+        }
+        backgroundTimeRef.current = null;
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [initializeAuth, initializeAiConfig]);
 
   if (isLoading) {
     return (

@@ -12,6 +12,7 @@ export interface BackupPayload {
   career: string | null;
   candidateProfile: string | null;
   tasks: string | null;
+  aiProvider?: string | null;
 }
 
 const STORAGE_KEYS = {
@@ -20,8 +21,9 @@ const STORAGE_KEYS = {
   health: 'personal-app:health-store-v2',
   wealth: 'personal-app:wealth-store-v2',
   career: 'personal-app:career-jobs-v2',
-  candidateProfile: 'personal-app:candidate-profile-v1',
+  candidateProfile: 'aayon:candidate-profile-v3',
   tasks: '@personal_app:daily_tasks_v2',
+  aiProvider: '@aayon:ai_preferred_provider',
 };
 
 export class BackupService {
@@ -29,27 +31,31 @@ export class BackupService {
    * Bundles all local sandboxed app data into a portable JSON backup payload
    */
   static async generateBackup(): Promise<string> {
-    const [profile, biometrics, health, wealth, career, candidateProfile, tasks] = await Promise.all([
+    const candidateV3 = await AsyncStorage.getItem(STORAGE_KEYS.candidateProfile);
+    const candidateFallback = candidateV3 || (await AsyncStorage.getItem('personal-app:candidate-profile-v2')) || (await AsyncStorage.getItem('personal-app:candidate-profile-v1'));
+
+    const [profile, biometrics, health, wealth, career, tasks, aiProvider] = await Promise.all([
       AsyncStorage.getItem(STORAGE_KEYS.profile),
       AsyncStorage.getItem(STORAGE_KEYS.biometrics),
       AsyncStorage.getItem(STORAGE_KEYS.health),
       AsyncStorage.getItem(STORAGE_KEYS.wealth),
       AsyncStorage.getItem(STORAGE_KEYS.career),
-      AsyncStorage.getItem(STORAGE_KEYS.candidateProfile),
       AsyncStorage.getItem(STORAGE_KEYS.tasks),
+      AsyncStorage.getItem(STORAGE_KEYS.aiProvider),
     ]);
 
     const payload: BackupPayload = {
       app: 'AAYON',
-      version: '1.0.0',
+      version: '1.1.0',
       timestamp: new Date().toISOString(),
       profile,
       biometricPref: biometrics,
       health,
       wealth,
       career,
-      candidateProfile,
+      candidateProfile: candidateFallback,
       tasks,
+      aiProvider,
     };
 
     return JSON.stringify(payload, null, 2);
@@ -99,10 +105,35 @@ export class BackupService {
       if (payload.health) writes.push([STORAGE_KEYS.health, payload.health]);
       if (payload.wealth) writes.push([STORAGE_KEYS.wealth, payload.wealth]);
       if (payload.career) writes.push([STORAGE_KEYS.career, payload.career]);
-      if (payload.candidateProfile) writes.push([STORAGE_KEYS.candidateProfile, payload.candidateProfile]);
+      if (payload.candidateProfile) {
+        writes.push([STORAGE_KEYS.candidateProfile, payload.candidateProfile]);
+        writes.push(['personal-app:candidate-profile-v2', payload.candidateProfile]);
+      }
       if (payload.tasks) writes.push([STORAGE_KEYS.tasks, payload.tasks]);
+      if (payload.aiProvider) writes.push([STORAGE_KEYS.aiProvider, payload.aiProvider]);
 
       await AsyncStorage.multiSet(writes);
+
+      // Rehydrate active Zustand stores dynamically
+      try {
+        const { useCandidateProfileStore } = require('../../features/career/state/candidate-profile-store');
+        useCandidateProfileStore.persist?.rehydrate?.();
+      } catch (e) {
+        console.warn('[BackupService] Candidate profile rehydrate note:', e);
+      }
+      try {
+        const { useJobStore } = require('../../features/career/state/job-store');
+        useJobStore.persist?.rehydrate?.();
+      } catch (e) {
+        console.warn('[BackupService] Job store rehydrate note:', e);
+      }
+      try {
+        const { useWealthStore } = require('../../features/wealth/state/wealth-store');
+        useWealthStore.persist?.rehydrate?.();
+      } catch (e) {
+        console.warn('[BackupService] Wealth store rehydrate note:', e);
+      }
+
       return true;
     } catch (err) {
       console.warn('[BackupService] Restore error:', err);
