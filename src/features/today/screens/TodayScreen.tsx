@@ -428,6 +428,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   greeting: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium' }),
     fontSize: 22,
     fontWeight: '700',
     color: Colors.textPrimary,

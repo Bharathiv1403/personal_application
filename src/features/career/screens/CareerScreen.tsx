@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Share,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -852,12 +853,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   screenTitle: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium' }),
     fontSize: 22,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   screenSubtitle: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif' }),
     fontSize: 12,
     color: Colors.textMuted,
     marginTop: 2,

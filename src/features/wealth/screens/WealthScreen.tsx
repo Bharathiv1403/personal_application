@@ -9,6 +9,7 @@ import {
   Share,
   Linking,
   TextInput,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -634,7 +635,7 @@ export const WealthScreen: React.FC = () => {
           </View>
           <View style={styles.headerActionsWrap}>
             <TouchableOpacity
-              style={[styles.stealthToggleBtn, isStealthMode && styles.stealthToggleBtnActive]}
+              style={[styles.headerIconBtn, isStealthMode && styles.headerIconBtnActive]}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -648,22 +649,26 @@ export const WealthScreen: React.FC = () => {
                 color={isStealthMode ? '#F59E0B' : Colors.textMuted}
               />
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={styles.exportHeaderBtn}
+              style={styles.headerIconBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               onPress={handleExportStatement}
+              accessibilityLabel="Export Statement"
             >
-              <Ionicons name="download-outline" size={13} color="#38BDF8" />
-              <Text style={styles.exportHeaderBtnText}>Export</Text>
+              <Ionicons name="download-outline" size={16} color="#38BDF8" />
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={styles.aiButton}
+              style={[styles.headerIconBtn, { borderColor: 'rgba(245, 158, 11, 0.35)', backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                 setAiInsightsModalVisible(true);
               }}
+              accessibilityLabel="AI Insights"
             >
-              <Ionicons name="sparkles" size={13} color="#F59E0B" />
-              <Text style={styles.aiButtonText}>AI</Text>
+              <Ionicons name="sparkles" size={15} color="#F59E0B" />
             </TouchableOpacity>
           </View>
         </View>
@@ -726,38 +731,50 @@ export const WealthScreen: React.FC = () => {
         {/* ========================================================= */}
         <View style={styles.quickActionBar}>
           <TouchableOpacity
-            style={[styles.quickActionBtn, { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: '#EF4444' }]}
+            style={styles.quickActionCard}
             onPress={() => openAddTx('expense')}
+            activeOpacity={0.7}
           >
-            <Ionicons name="arrow-up" size={14} color="#EF4444" />
-            <Text style={[styles.quickActionText, { color: '#EF4444' }]} numberOfLines={1}>Expense</Text>
+            <View style={[styles.quickActionIconWrap, { backgroundColor: 'rgba(239, 68, 68, 0.18)' }]}>
+              <Ionicons name="arrow-up" size={13} color="#EF4444" />
+            </View>
+            <Text style={styles.quickActionLabel}>Expense</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.quickActionBtn, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: '#10B981' }]}
+            style={styles.quickActionCard}
             onPress={() => openAddTx('income')}
+            activeOpacity={0.7}
           >
-            <Ionicons name="arrow-down" size={14} color="#10B981" />
-            <Text style={[styles.quickActionText, { color: '#10B981' }]} numberOfLines={1}>Income</Text>
+            <View style={[styles.quickActionIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.18)' }]}>
+              <Ionicons name="arrow-down" size={13} color="#10B981" />
+            </View>
+            <Text style={styles.quickActionLabel}>Income</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.quickActionBtn, { backgroundColor: 'rgba(59, 130, 246, 0.15)', borderColor: '#3B82F6' }]}
+            style={styles.quickActionCard}
             onPress={() => openAddTx('transfer')}
+            activeOpacity={0.7}
           >
-            <Ionicons name="swap-horizontal" size={14} color="#3B82F6" />
-            <Text style={[styles.quickActionText, { color: '#3B82F6' }]} numberOfLines={1}>Transfer</Text>
+            <View style={[styles.quickActionIconWrap, { backgroundColor: 'rgba(56, 189, 248, 0.18)' }]}>
+              <Ionicons name="swap-horizontal" size={13} color="#38BDF8" />
+            </View>
+            <Text style={styles.quickActionLabel}>Transfer</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.quickActionBtn, { backgroundColor: 'rgba(168, 85, 247, 0.15)', borderColor: '#A855F7' }]}
+            style={styles.quickActionCard}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setAddAccountModalVisible(true);
             }}
+            activeOpacity={0.7}
           >
-            <Ionicons name="card" size={14} color="#A855F7" />
-            <Text style={[styles.quickActionText, { color: '#A855F7' }]} numberOfLines={1}>Account</Text>
+            <View style={[styles.quickActionIconWrap, { backgroundColor: 'rgba(168, 85, 247, 0.18)' }]}>
+              <Ionicons name="card" size={13} color="#C084FC" />
+            </View>
+            <Text style={styles.quickActionLabel}>Account</Text>
           </TouchableOpacity>
         </View>
 
@@ -766,6 +783,7 @@ export const WealthScreen: React.FC = () => {
         {/* ========================================================= */}
         <TouchableOpacity
           style={styles.salaryPlannerBanner}
+          activeOpacity={0.8}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             setAddBudgetGoalModalVisible(true);
@@ -777,11 +795,23 @@ export const WealthScreen: React.FC = () => {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.salaryBannerTitle}>Monthly Salary & Expense Planner</Text>
-              <Text style={styles.salaryBannerSub} numberOfLines={2}>
-                {monthlySalary > 0
-                  ? `Salary: ${formatINR(monthlySalary)} • Spent: ${formatINR(totalExpense)}\nLeft: ${formatINR(Math.max(0, monthlySalary - totalExpense))}`
-                  : 'Tap to add your monthly salary & start logging expenses'}
-              </Text>
+              {monthlySalary > 0 ? (
+                <View style={styles.salaryStatsRow}>
+                  <Text style={styles.salaryStatTag}>
+                    Salary <Text style={styles.salaryStatVal}>{money(monthlySalary)}</Text>
+                  </Text>
+                  <Text style={styles.salaryStatTag}>
+                    Spent <Text style={[styles.salaryStatVal, { color: '#F87171' }]}>{money(totalExpense)}</Text>
+                  </Text>
+                  <Text style={styles.salaryStatTag}>
+                    Left <Text style={[styles.salaryStatVal, { color: '#4ADE80' }]}>{money(Math.max(0, monthlySalary - totalExpense))}</Text>
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.salaryBannerSub}>
+                  Tap to add your monthly salary & start logging expenses
+                </Text>
+              )}
             </View>
           </View>
           <View style={styles.salaryBannerAction}>
@@ -1885,16 +1915,20 @@ export const WealthScreen: React.FC = () => {
                           </TouchableOpacity>
 
                           <TouchableOpacity
-                            style={styles.settleBtn}
+                            style={[styles.settleBtn, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)' }]}
                             onPress={() => handleSettlePeerDebt(d)}
                           >
-                            <Ionicons name="checkmark-circle-outline" size={14} color="#FFFFFF" />
-                            <Text style={styles.settleBtnText}>Full Settle</Text>
+                            <Ionicons name="checkmark-circle-outline" size={14} color="#10B981" />
+                            <Text style={[styles.settleBtnText, { color: '#10B981' }]}>Full Settle</Text>
                           </TouchableOpacity>
                         </View>
                       )}
 
-                      <TouchableOpacity onPress={() => handleDeletePeerDebt(d.id)}>
+                      <TouchableOpacity
+                        style={styles.khataDeleteBtn}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        onPress={() => handleDeletePeerDebt(d.id)}
+                      >
                         <Ionicons name="trash-outline" size={15} color={Colors.textMuted} />
                       </TouchableOpacity>
                     </View>
@@ -2164,17 +2198,32 @@ const styles = StyleSheet.create({
   headerActionsWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     flexShrink: 0,
-    flexWrap: 'wrap',
+  },
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerIconBtnActive: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: '#F59E0B',
   },
   screenTitle: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium' }),
     fontSize: 22,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   screenSubtitle: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif' }),
     fontSize: 12,
     color: Colors.textMuted,
     marginTop: 2,
@@ -2215,6 +2264,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   heroNetWorth: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium' }),
     fontSize: 30,
     fontWeight: '900',
     color: '#FFFFFF',
@@ -2247,7 +2297,33 @@ const styles = StyleSheet.create({
   quickActionBar: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  quickActionCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: Radii.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    gap: 6,
+  },
+  quickActionIconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif' }),
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E2E8F0',
   },
   quickActionBtn: {
     flex: 1,
@@ -2953,14 +3029,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   salaryBannerTitle: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium' }),
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
   },
   salaryBannerSub: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif' }),
     fontSize: 11,
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  salaryStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  salaryStatTag: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif' }),
+    fontSize: 11,
+    color: Colors.textMuted,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radii.sm,
+  },
+  salaryStatVal: {
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   salaryBannerAction: {
     flexDirection: 'row',
@@ -3201,9 +3299,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   settleBtnText: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif' }),
     fontSize: 11,
     fontWeight: '700',
     color: '#38BDF8',
+  },
+  khataDeleteBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: Radii.sm,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Savings Pots

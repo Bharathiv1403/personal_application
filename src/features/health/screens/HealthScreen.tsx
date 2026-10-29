@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { ScreenContainer } from '@/core/design-system/primitives/ScreenContainer';
@@ -238,11 +238,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   screenTitle: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium' }),
     fontSize: 22,
     fontWeight: '700',
     color: Colors.textPrimary,
   },
   screenSubtitle: {
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif' }),
     fontSize: 13,
     color: Colors.textSecondary,
     marginTop: 2,

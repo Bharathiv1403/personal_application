@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +32,7 @@ export const BottomTabNavigator: React.FC = () => {
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarLabelStyle: {
+          fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium' }),
           fontSize: 11,
           fontWeight: '600',
         },
@@ -80,7 +82,7 @@ export const BottomTabNavigator: React.FC = () => {
         name="AgentTab"
         component={AgentScreen}
         options={{
-          tabBarLabel: 'AAYON AI',
+          tabBarLabel: 'Copilot',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={size - 2} color={color} />
           ),
