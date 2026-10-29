@@ -10,6 +10,7 @@ import {
   Linking,
   TextInput,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -622,9 +623,31 @@ export const WealthScreen: React.FC = () => {
     );
   };
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    // Simulate brief refresh to recalculate totals
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 600);
+  };
+
   return (
     <ScreenContainer>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
+          />
+        }
+      >
         {/* ========================================================= */}
         {/* TOP HEADER */}
         {/* ========================================================= */}

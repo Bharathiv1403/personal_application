@@ -21,6 +21,7 @@ import { useVaultStore } from '../state/vault-store';
 import { PasswordGenerator } from '../utils/password-generator';
 import { PasswordGeneratorModal } from './PasswordGeneratorModal';
 import { TotpService } from '../utils/totp';
+import { VaultCryptoService } from '../utils/vault-crypto';
 
 interface AddEditVaultEntryModalProps {
   visible: boolean;
@@ -62,6 +63,7 @@ export const AddEditVaultEntryModal: React.FC<AddEditVaultEntryModalProps> = ({
   // Password visibility
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [generatorVisible, setGeneratorVisible] = useState(false);
+  const [revealedHistory, setRevealedHistory] = useState<Record<number, boolean>>({});
 
   // Field adding
   const [newFieldLabel, setNewFieldLabel] = useState('');
@@ -450,16 +452,48 @@ export const AddEditVaultEntryModal: React.FC<AddEditVaultEntryModalProps> = ({
                 <Text style={styles.inputLabel}>
                   Password History ({entryToEdit.history.length} past keys)
                 </Text>
-                {entryToEdit.history.map((h, idx) => (
-                  <View key={idx} style={styles.historyRow}>
-                    <Text style={styles.historyPw} numberOfLines={1}>
-                      ••••••••••••
-                    </Text>
-                    <Text style={styles.historyDate}>
-                      {new Date(h.changedAt).toLocaleDateString()}
-                    </Text>
-                  </View>
-                ))}
+                {entryToEdit.history.map((h, idx) => {
+                  const isRevealed = !!revealedHistory[idx];
+                  return (
+                    <View key={idx} style={styles.historyRow}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={styles.historyPw} numberOfLines={1}>
+                          {isRevealed ? h.password : '••••••••••••'}
+                        </Text>
+                        <Text style={styles.historyDate}>
+                          Changed on {new Date(h.changedAt).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TouchableOpacity
+                          style={styles.historyIconBtn}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                            setRevealedHistory((prev) => ({ ...prev, [idx]: !prev[idx] }));
+                          }}
+                        >
+                          <Ionicons
+                            name={isRevealed ? 'eye-off-outline' : 'eye-outline'}
+                            size={15}
+                            color="#94A3B8"
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.historyCopyBtn}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          onPress={async () => {
+                            await VaultCryptoService.copySecureWithAutoPurge(h.password, 'Past Password');
+                            Alert.alert('Copied 🛡️', 'Past password copied. Clipboard auto-purges in 30 seconds.');
+                          }}
+                        >
+                          <Ionicons name="copy-outline" size={12} color="#818CF8" />
+                          <Text style={styles.historyCopyText}>Copy</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
             )}
 
@@ -706,6 +740,28 @@ const styles = StyleSheet.create({
   historyDate: {
     fontSize: 10,
     color: Colors.textMuted,
+    marginTop: 2,
+  },
+  historyIconBtn: {
+    padding: 6,
+    borderRadius: Radii.xs,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  historyCopyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: Radii.xs,
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+  },
+  historyCopyText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#818CF8',
   },
   saveBtn: {
     flexDirection: 'row',

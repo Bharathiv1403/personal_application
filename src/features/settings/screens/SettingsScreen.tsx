@@ -39,6 +39,8 @@ export const SettingsScreen: React.FC = () => {
   const isBiometricEnabled = useAuthStore((s) => s.isBiometricEnabled);
   const signOut = useAuthStore((s) => s.signOut);
   const resetAccount = useAuthStore((s) => s.resetAccount);
+  const autoLockTimeout = useAuthStore((s) => s.autoLockTimeout);
+  const setAutoLockTimeout = useAuthStore((s) => s.setAutoLockTimeout);
 
   const profile = useCandidateProfileStore();
   const geminiKey = useAiConfigStore((s) => s.geminiKey);
@@ -326,6 +328,56 @@ export const SettingsScreen: React.FC = () => {
             </View>
             <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
           </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <View style={styles.settingRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingLabel}>Background Auto-Lock</Text>
+              <Text style={styles.settingSub}>
+                {autoLockTimeout === 0
+                  ? 'Locks immediately when minimized'
+                  : autoLockTimeout === 60
+                  ? 'Locks after 1 minute in background'
+                  : autoLockTimeout === 300
+                  ? 'Locks after 5 minutes in background'
+                  : autoLockTimeout === 900
+                  ? 'Locks after 15 minutes in background'
+                  : 'Never auto-lock (Always unlocked)'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.timeoutBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                Alert.alert(
+                  'Auto-Lock Delay',
+                  'Select how long the app can stay in background before automatically locking session & vaults:',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Immediately', onPress: () => setAutoLockTimeout(0) },
+                    { text: '1 Minute', onPress: () => setAutoLockTimeout(60) },
+                    { text: '5 Minutes (Default)', onPress: () => setAutoLockTimeout(300) },
+                    { text: '15 Minutes', onPress: () => setAutoLockTimeout(900) },
+                    { text: 'Never', onPress: () => setAutoLockTimeout(-1) },
+                  ]
+                );
+              }}
+            >
+              <Text style={styles.timeoutBtnText}>
+                {autoLockTimeout === 0
+                  ? 'Instant'
+                  : autoLockTimeout === 60
+                  ? '1 min'
+                  : autoLockTimeout === 300
+                  ? '5 min'
+                  : autoLockTimeout === 900
+                  ? '15 min'
+                  : 'Never'}
+              </Text>
+              <Ionicons name="chevron-down" size={13} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
         </GlassCard>
 
         {/* 5. KeePassDX Password & 2FA Vault */}
@@ -751,6 +803,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 6,
+  },
+  timeoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radii.sm,
+  },
+  timeoutBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   settingLabel: {
     fontSize: 13,

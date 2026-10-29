@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import * as Clipboard from 'expo-clipboard';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useVaultStore } from '../state/vault-store';
 import { VaultEntry, VaultGroup } from '../types';
 import { VaultCryptoService } from '../utils/vault-crypto';
@@ -148,6 +149,23 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
     );
   };
 
+  const verifyAuthForExport = async (): Promise<boolean> => {
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (hasHardware && isEnrolled) {
+        const res = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Confirm Biometrics to Export KeePass Vault',
+          cancelLabel: 'Cancel',
+        });
+        return res.success;
+      }
+      return true;
+    } catch {
+      return true;
+    }
+  };
+
   // Export Backup
   const handleExportBackup = async () => {
     Alert.alert(
@@ -158,6 +176,11 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
         {
           text: 'KeePass CSV (KeePassDX / KeePassXC)',
           onPress: async () => {
+            const isAuthed = await verifyAuthForExport();
+            if (!isAuthed) {
+              Alert.alert('Export Blocked 🛡️', 'Biometric authentication is required to export unencrypted credentials.');
+              return;
+            }
             try {
               const csv = VaultCryptoService.exportVaultCSV(entries);
               await Share.share({
@@ -172,6 +195,11 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
         {
           text: 'Full JSON Backup',
           onPress: async () => {
+            const isAuthed = await verifyAuthForExport();
+            if (!isAuthed) {
+              Alert.alert('Export Blocked 🛡️', 'Biometric authentication is required to export vault data.');
+              return;
+            }
             try {
               const json = VaultCryptoService.exportVaultJSON(entries);
               await Share.share({
@@ -256,14 +284,20 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
       if (activeGroup === 'favorites' && !entry.isFavorite) return false;
       if (activeGroup !== 'all' && activeGroup !== 'favorites' && entry.group !== activeGroup) return false;
 
-      // Search query
+      // Search query (Searches across Title, Username, URL, Notes, Tags, and Custom Fields)
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesTitle = entry.title.toLowerCase().includes(q);
         const matchesUser = entry.username.toLowerCase().includes(q);
         const matchesUrl = entry.url?.toLowerCase().includes(q);
+        const matchesNotes = entry.notes?.toLowerCase().includes(q);
         const matchesTags = entry.tags?.some((t) => t.toLowerCase().includes(q));
-        if (!matchesTitle && !matchesUser && !matchesUrl && !matchesTags) return false;
+        const matchesCustom = entry.customFields?.some(
+          (f) => f.label.toLowerCase().includes(q) || f.value.toLowerCase().includes(q)
+        );
+        if (!matchesTitle && !matchesUser && !matchesUrl && !matchesNotes && !matchesTags && !matchesCustom) {
+          return false;
+        }
       }
 
       return true;
@@ -486,6 +520,10 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
                     const totpCode = totpRes?.code || null;
                     const totpSeconds = totpRes?.secondsRemaining || 30;
                     const totpProgress = (totpSeconds / 30) * 100;
+                    const isWeak = entry.password ? entry.password.length < 8 : false;
+                    const isOld = entry.passwordUpdatedAt
+                      ? (Date.now() - new Date(entry.passwordUpdatedAt).getTime()) / (1000 * 60 * 60 * 24) > 90
+                      : false;
 
                     return (
                       <View key={entry.id} style={styles.entryCard}>
@@ -510,9 +548,21 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
                               />
                             </View>
                             <View style={{ flex: 1 }}>
-                              <Text style={styles.entryTitle} numberOfLines={1}>
-                                {entry.title}
-                              </Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <Text style={styles.entryTitle} numberOfLines={1}>
+                                  {entry.title}
+                                </Text>
+                                {isWeak && (
+                                  <View style={styles.riskBadgeWeak}>
+                                    <Text style={styles.riskBadgeTextWeak}>Weak</Text>
+                                  </View>
+                                )}
+                                {isOld && !isWeak && (
+                                  <View style={styles.riskBadgeOld}>
+                                    <Text style={styles.riskBadgeTextOld}>Old (90d+)</Text>
+                                  </View>
+                                )}
+                              </View>
                               {entry.url ? (
                                 <TouchableOpacity
                                   style={styles.urlRow}
@@ -1061,6 +1111,34 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontSize: 15,
     fontWeight: '700',
+  },
+  riskBadgeWeak: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  riskBadgeTextWeak: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#EF4444',
+    textTransform: 'uppercase',
+  },
+  riskBadgeOld: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  riskBadgeTextOld: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#F59E0B',
+    textTransform: 'uppercase',
   },
   urlRow: {
     flexDirection: 'row',
