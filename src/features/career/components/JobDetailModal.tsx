@@ -17,7 +17,7 @@ import * as Haptics from 'expo-haptics';
 import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
 import { Badge } from '@/core/design-system/primitives/Badge';
-import { useJobStore, JobApplicationItem, JobStage, InterviewRoundItem } from '../state/job-store';
+import { useJobStore, JobApplicationItem, JobStage, InterviewRoundItem, getJobPlatformSource } from '../state/job-store';
 
 interface Props {
   visible: boolean;
@@ -64,6 +64,7 @@ export const JobDetailModal: React.FC<Props> = ({
   const [notes, setNotes] = useState('');
 
   const currentStageInfo = STAGES.find((s) => s.stage === job.stage) || STAGES[0];
+  const platform = getJobPlatformSource(job);
 
   const handleStageChange = (newStage: JobStage) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -165,7 +166,13 @@ export const JobDetailModal: React.FC<Props> = ({
           {/* Top Bar */}
           <View style={styles.sheetHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.companyName}>{job.companyName}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <Text style={styles.companyName}>{job.companyName}</Text>
+                <View style={[styles.platformPill, { backgroundColor: platform.bg, borderColor: platform.color + '40' }]}>
+                  <Ionicons name={platform.icon} size={11} color={platform.color} />
+                  <Text style={[styles.platformPillText, { color: platform.color }]}>{platform.name}</Text>
+                </View>
+              </View>
               <Text style={styles.roleTitle}>{job.role}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -176,6 +183,10 @@ export const JobDetailModal: React.FC<Props> = ({
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
             {/* Quick Metrics Bar */}
             <View style={styles.metricsRow}>
+              <View style={[styles.metricItem, { backgroundColor: platform.bg, borderColor: platform.color + '30', borderWidth: 1 }]}>
+                <Ionicons name={platform.icon} size={13} color={platform.color} />
+                <Text style={[styles.metricText, { color: platform.color, fontWeight: '700' }]}>{platform.name}</Text>
+              </View>
               <View style={styles.metricItem}>
                 <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
                 <Text style={styles.metricText}>{job.location}</Text>
@@ -450,7 +461,7 @@ export const JobDetailModal: React.FC<Props> = ({
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.applyBtn}
+                style={[styles.applyBtn, { backgroundColor: platform.color }]}
                 onPress={() => {
                   onClose();
                   onOpenAutoApply(job);
@@ -458,7 +469,7 @@ export const JobDetailModal: React.FC<Props> = ({
               >
                 <Ionicons name="rocket" size={16} color="#FFFFFF" />
                 <Text style={styles.applyBtnText}>
-                  {job.stage === 'applied' ? 'Re-Apply' : 'Auto-Apply'}
+                  {job.stage === 'applied' ? `Re-Apply on ${platform.name}` : `Apply on ${platform.name} 🚀`}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -505,6 +516,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  platformPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: Radii.xs,
+    borderWidth: 1,
+    gap: 4,
+  },
+  platformPillText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   roleTitle: {
     fontSize: 18,

@@ -21,6 +21,16 @@ interface AddJobModalProps {
   onClose: () => void;
 }
 
+const PLATFORMS: { id: string; label: string; icon: any; color: string }[] = [
+  { id: 'LinkedIn', label: 'LinkedIn', icon: 'logo-linkedin', color: '#38BDF8' },
+  { id: 'Naukri', label: 'Naukri', icon: 'briefcase', color: '#60A5FA' },
+  { id: 'Indeed', label: 'Indeed', icon: 'search', color: '#818CF8' },
+  { id: 'Foundit', label: 'Foundit', icon: 'flash', color: '#C084FC' },
+  { id: 'Handshake', label: 'Handshake', icon: 'hand-right', color: '#FB923C' },
+  { id: 'Company Site', label: 'Company Portal', icon: 'business', color: '#34D399' },
+  { id: 'Referral', label: 'Referral', icon: 'people', color: '#FBBF24' },
+];
+
 export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) => {
   const addJob = useJobStore((s) => s.addJob);
 
@@ -28,6 +38,8 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) =>
   const [role, setRole] = useState('');
   const [location, setLocation] = useState('');
   const [workMode, setWorkMode] = useState<'Remote' | 'Hybrid' | 'Onsite'>('Remote');
+  const [sourcePlatform, setSourcePlatform] = useState('LinkedIn');
+  const [jobUrl, setJobUrl] = useState('');
   const [ctcMinText, setCtcMinText] = useState('');
   const [ctcMaxText, setCtcMaxText] = useState('');
   const [stage, setStage] = useState<JobStage>('applied');
@@ -43,6 +55,8 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) =>
       role: role.trim(),
       location: location.trim(),
       workMode,
+      source: sourcePlatform,
+      url: jobUrl.trim() || undefined,
       ctcMin: parseFloat(ctcMinText) || 20,
       ctcMax: parseFloat(ctcMaxText) || 25,
       stage,
@@ -52,6 +66,8 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) =>
     });
 
     setCompany('');
+    setRole('');
+    setJobUrl('');
     setJdText('');
     onClose();
   };
@@ -95,6 +111,47 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) =>
                 placeholderTextColor={Colors.textMuted}
                 value={role}
                 onChangeText={setRole}
+              />
+            </View>
+
+            {/* Source Platform Selector */}
+            <View style={styles.formGroup}>
+              <Text style={styles.inputLabel}>Found On (Source Platform)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.platformScroll}>
+                {PLATFORMS.map((p) => {
+                  const isSel = sourcePlatform === p.id;
+                  return (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={[
+                        styles.platformChip,
+                        isSel && { backgroundColor: p.color + '22', borderColor: p.color },
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                        setSourcePlatform(p.id);
+                      }}
+                    >
+                      <Ionicons name={p.icon} size={13} color={isSel ? p.color : Colors.textMuted} />
+                      <Text style={[styles.platformText, isSel && { color: p.color, fontWeight: '700' }]}>
+                        {p.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Job Posting Link */}
+            <View style={styles.formGroup}>
+              <Text style={styles.inputLabel}>Job Posting URL (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="https://www.linkedin.com/jobs/view/..."
+                placeholderTextColor={Colors.textMuted}
+                value={jobUrl}
+                onChangeText={setJobUrl}
+                autoCapitalize="none"
               />
             </View>
 
@@ -276,6 +333,27 @@ const styles = StyleSheet.create({
   },
   stageScroll: {
     marginTop: 2,
+  },
+  platformScroll: {
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  platformChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: Radii.full,
+    marginRight: Spacing.sm,
+    gap: 5,
+  },
+  platformText: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    fontWeight: '600',
   },
   stageChip: {
     backgroundColor: Colors.card,

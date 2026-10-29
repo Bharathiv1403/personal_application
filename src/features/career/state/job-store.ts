@@ -27,6 +27,7 @@ export interface JobApplicationItem {
   ctcMax: number;
   stage: JobStage;
   appliedDate: string;
+  source?: string; // 'LinkedIn' | 'Naukri' | 'Indeed' | 'Foundit' | 'Handshake' | 'Company Site' | 'Referral' | etc.
   jobDescription?: string;
   matchScore?: number;
   missingSkills?: string[];
@@ -37,6 +38,46 @@ export interface JobApplicationItem {
   recruiterPhone?: string;
   recruiterEmail?: string;
 }
+
+export interface JobPlatformInfo {
+  name: string;
+  icon: any;
+  color: string;
+  bg: string;
+}
+
+export const getJobPlatformSource = (job: Partial<JobApplicationItem>): JobPlatformInfo => {
+  const url = (job.url || '').toLowerCase();
+  const tags = (job.tags || []).map((t) => t.toLowerCase());
+  const explicit = (job.source || '').toLowerCase();
+
+  if (explicit.includes('linkedin') || url.includes('linkedin.com') || tags.includes('linkedin')) {
+    return { name: 'LinkedIn', icon: 'logo-linkedin', color: '#38BDF8', bg: 'rgba(14, 165, 233, 0.15)' };
+  }
+  if (explicit.includes('naukri') || url.includes('naukri.com') || tags.includes('naukri')) {
+    return { name: 'Naukri', icon: 'briefcase', color: '#60A5FA', bg: 'rgba(96, 165, 250, 0.15)' };
+  }
+  if (explicit.includes('indeed') || url.includes('indeed.com') || tags.includes('indeed')) {
+    return { name: 'Indeed', icon: 'search', color: '#818CF8', bg: 'rgba(129, 140, 248, 0.15)' };
+  }
+  if (explicit.includes('foundit') || explicit.includes('monster') || url.includes('foundit') || url.includes('monster')) {
+    return { name: 'Foundit', icon: 'flash', color: '#C084FC', bg: 'rgba(192, 132, 252, 0.15)' };
+  }
+  if (explicit.includes('handshake') || url.includes('joinhandshake') || url.includes('handshake') || tags.includes('handshake')) {
+    return { name: 'Handshake', icon: 'people', color: '#FB923C', bg: 'rgba(251, 146, 60, 0.15)' };
+  }
+  if (explicit.includes('company') || url.includes('greenhouse.io') || url.includes('lever.co') || url.includes('myworkdayjobs.com') || url.includes('careers.')) {
+    return { name: 'Company Site', icon: 'business', color: '#34D399', bg: 'rgba(52, 211, 153, 0.15)' };
+  }
+  if (url.includes('arbeitnow') || url.includes('jobicy') || url.includes('remotive')) {
+    return { name: 'Remote Hub', icon: 'globe-outline', color: '#22D3EE', bg: 'rgba(34, 211, 238, 0.15)' };
+  }
+  if (explicit.includes('referral') || tags.includes('referral')) {
+    return { name: 'Referral', icon: 'gift-outline', color: '#FBBF24', bg: 'rgba(251, 191, 36, 0.15)' };
+  }
+
+  return { name: job.source || 'Company Portal', icon: 'browsers-outline', color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)' };
+};
 
 interface JobState {
   myResumeSkills: string[];

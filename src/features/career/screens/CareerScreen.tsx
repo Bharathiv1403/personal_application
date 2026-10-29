@@ -17,7 +17,7 @@ import { GlassCard } from '@/core/design-system/primitives/GlassCard';
 import { Badge } from '@/core/design-system/primitives/Badge';
 import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
-import { useJobStore, JobStage, JobApplicationItem } from '../state/job-store';
+import { useJobStore, JobStage, JobApplicationItem, getJobPlatformSource } from '../state/job-store';
 import { useCandidateProfileStore } from '../state/candidate-profile-store';
 import { CareerProfileModal } from '../components/CareerProfileModal';
 import { JobPreferencesModal } from '../components/JobPreferencesModal';
@@ -37,9 +37,21 @@ import { ApiKeyModal } from '@/core/components/ApiKeyModal';
 
 type NavTab = 'Jobs' | 'Tracker';
 
+const PLATFORM_FILTERS = [
+  { id: 'All', label: 'All Feeds', icon: 'apps-outline', color: '#94A3B8' },
+  { id: 'LinkedIn', label: 'LinkedIn', icon: 'logo-linkedin', color: '#38BDF8' },
+  { id: 'Naukri', label: 'Naukri', icon: 'briefcase', color: '#60A5FA' },
+  { id: 'Indeed', label: 'Indeed', icon: 'search', color: '#818CF8' },
+  { id: 'Foundit', label: 'Foundit', icon: 'flash', color: '#C084FC' },
+  { id: 'Handshake', label: 'Handshake', icon: 'hand-right', color: '#FB923C' },
+  { id: 'Company Site', label: 'Company Portal', icon: 'business', color: '#34D399' },
+  { id: 'Remote Hub', label: 'Remote Hub', icon: 'globe-outline', color: '#22D3EE' },
+];
+
 export const CareerScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>('Jobs');
   const [trackerStage, setTrackerStage] = useState<'All' | 'wishlist' | 'applied' | 'interview' | 'offer'>('All');
+  const [selectedPlatform, setSelectedPlatform] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals state
@@ -94,6 +106,11 @@ export const CareerScreen: React.FC = () => {
         j.companyName.toLowerCase().includes(query) ||
         (j.tags && j.tags.some((t) => t.toLowerCase().includes(query)));
 
+      if (selectedPlatform !== 'All') {
+        const platform = getJobPlatformSource(j);
+        if (platform.name !== selectedPlatform) return false;
+      }
+
       if (activeTab === 'Tracker') {
         const matchesStage = trackerStage === 'All' ? true : j.stage === trackerStage;
         return matchesStage && matchesQuery;
@@ -101,7 +118,7 @@ export const CareerScreen: React.FC = () => {
 
       return matchesQuery;
     });
-  }, [jobs, activeTab, trackerStage, searchQuery]);
+  }, [jobs, activeTab, trackerStage, searchQuery, selectedPlatform]);
 
   const handleLiveAutoSearch = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -528,6 +545,47 @@ export const CareerScreen: React.FC = () => {
           </ScrollView>
         )}
 
+        {/* Platform Source Filter Chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.platformFilterScroll}
+          contentContainerStyle={styles.platformFilterContent}
+        >
+          {PLATFORM_FILTERS.map((p) => {
+            const isActive = selectedPlatform === p.id;
+            return (
+              <TouchableOpacity
+                key={p.id}
+                style={[
+                  styles.platformFilterChip,
+                  isActive && styles.platformFilterChipActive,
+                  isActive && p.color ? { borderColor: p.color, backgroundColor: p.color + '22' } : null,
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  setSelectedPlatform(p.id);
+                }}
+              >
+                <Ionicons
+                  name={p.icon as any}
+                  size={12}
+                  color={isActive ? (p.color || '#FFFFFF') : Colors.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.platformFilterChipText,
+                    isActive && styles.platformFilterChipTextActive,
+                    isActive && p.color ? { color: p.color } : null,
+                  ]}
+                >
+                  {p.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
         {/* ========================================================= */}
         {/* JOB CARDS LIST */}
         {/* ========================================================= */}
@@ -544,6 +602,7 @@ export const CareerScreen: React.FC = () => {
             filteredJobs.map((job) => {
               const matchScore = job.matchScore || 85;
               const isApplied = job.stage === 'applied';
+              const platform = getJobPlatformSource(job);
 
               return (
                 <TouchableOpacity
@@ -557,7 +616,13 @@ export const CareerScreen: React.FC = () => {
                     <View style={styles.jobCardTop}>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.jobRole}>{job.role}</Text>
-                        <Text style={styles.jobCompany}>{job.companyName}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                          <Text style={styles.jobCompany}>{job.companyName}</Text>
+                          <View style={[styles.platformBadge, { backgroundColor: platform.bg, borderColor: platform.color + '40' }]}>
+                            <Ionicons name={platform.icon} size={11} color={platform.color} />
+                            <Text style={[styles.platformBadgeText, { color: platform.color }]}>{platform.name}</Text>
+                          </View>
+                        </View>
                       </View>
                       <Badge
                         label={`${matchScore}% Match`}
@@ -1157,5 +1222,50 @@ const styles = StyleSheet.create({
   staleBadgeText: {
     fontSize: 10,
     color: Colors.textMuted,
+  },
+  platformBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radii.xs,
+    borderWidth: 1,
+    gap: 3,
+  },
+  platformBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  platformFilterScroll: {
+    marginBottom: Spacing.sm,
+  },
+  platformFilterContent: {
+    paddingHorizontal: Spacing.lg,
+    gap: 6,
+  },
+  platformFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radii.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 5,
+  },
+  platformFilterChipActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: '#FFFFFF',
+  },
+  platformFilterChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  platformFilterChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
 });
