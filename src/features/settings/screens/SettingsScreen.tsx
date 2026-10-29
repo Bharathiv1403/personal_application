@@ -438,12 +438,37 @@ export const SettingsScreen: React.FC = () => {
 
           <TouchableOpacity
             style={styles.resetBtn}
+            activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
-              Alert.alert('Reset All Data & Account?', 'This will permanently wipe all local vault data, PIN, and saved records from this phone.', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Erase Everything', style: 'destructive', onPress: resetAccount },
-              ]);
+              Alert.alert(
+                '⚠️ Erase All Local Data?',
+                'This will permanently wipe all local KeePass vaults, financial records, and app configurations from this phone.\n\nThis action CANNOT be undone.',
+                [
+                  { text: 'Keep Data', style: 'cancel' },
+                  {
+                    text: 'Continue...',
+                    style: 'destructive',
+                    onPress: () => {
+                      Alert.alert(
+                        'Final Confirmation 🚨',
+                        'Are you ABSOLUTELY sure? Any unbacked vault credentials will be permanently destroyed.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Permanently Erase All Data',
+                            style: 'destructive',
+                            onPress: () => {
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+                              resetAccount();
+                            },
+                          },
+                        ]
+                      );
+                    },
+                  },
+                ]
+              );
             }}
           >
             <Ionicons name="trash-outline" size={16} color={Colors.danger} />

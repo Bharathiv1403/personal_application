@@ -333,36 +333,34 @@ export const CareerScreen: React.FC = () => {
           contentContainerStyle={styles.toolBeltContent}
         >
           <TouchableOpacity
-            style={[styles.toolChip, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: '#10B981' }]}
+            style={styles.toolChip}
+            activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setAddJobModalVisible(true);
             }}
           >
             <Ionicons name="add-circle" size={15} color="#10B981" />
-            <Text style={[styles.toolChipText, { color: '#10B981' }]}>+ Add Application</Text>
+            <Text style={styles.toolChipText}>+ Add Application</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.toolChip,
-              hasKey
-                ? { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: '#10B981' }
-                : { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: '#F59E0B' },
-            ]}
+            style={styles.toolChip}
+            activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setApiKeyModalVisible(true);
             }}
           >
             <Ionicons name="key" size={15} color={hasKey ? '#10B981' : '#F59E0B'} />
-            <Text style={[styles.toolChipText, { color: hasKey ? '#10B981' : '#F59E0B' }]}>
+            <Text style={styles.toolChipText}>
               {hasKey ? 'AI Key 🟢' : 'Set AI Key 🔑'}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.toolChip, { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: '#38BDF8' }]}
+            style={styles.toolChip}
+            activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               if (jobs.length > 0) {
@@ -373,84 +371,91 @@ export const CareerScreen: React.FC = () => {
             }}
           >
             <Ionicons name="people" size={15} color="#38BDF8" />
-            <Text style={[styles.toolChipText, { color: '#38BDF8' }]}>Referral & Outreach</Text>
+            <Text style={styles.toolChipText}>Referral & Outreach</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.toolChip, { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: '#F59E0B' }]}
+            style={styles.toolChip}
+            activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setOfferNegotiatorVisible(true);
             }}
           >
             <Ionicons name="scale" size={15} color="#F59E0B" />
-            <Text style={[styles.toolChipText, { color: '#F59E0B' }]}>Offer Negotiator</Text>
+            <Text style={styles.toolChipText}>Offer Negotiator</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.toolChip, { backgroundColor: 'rgba(6, 182, 212, 0.15)', borderColor: '#06B6D4' }]}
+            style={styles.toolChip}
+            activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setAtsModalVisible(true);
             }}
           >
             <Ionicons name="scan-outline" size={15} color="#06B6D4" />
-            <Text style={[styles.toolChipText, { color: '#06B6D4' }]}>ATS Scanner</Text>
+            <Text style={styles.toolChipText}>ATS Scanner</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.toolChip, { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: '#F59E0B' }]}
+            style={styles.toolChip}
+            activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setInHandModalVisible(true);
             }}
           >
             <Ionicons name="calculator-outline" size={15} color="#F59E0B" />
-            <Text style={[styles.toolChipText, { color: '#F59E0B' }]}>In-Hand CTC</Text>
+            <Text style={styles.toolChipText}>In-Hand CTC</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.toolChip, { backgroundColor: 'rgba(168, 85, 247, 0.15)', borderColor: '#A855F7' }]}
+            style={styles.toolChip}
+            activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setCoachModalVisible(true);
             }}
           >
             <Ionicons name="chatbubble-ellipses" size={15} color="#C084FC" />
-            <Text style={[styles.toolChipText, { color: '#C084FC' }]}>AI Coach</Text>
+            <Text style={styles.toolChipText}>AI Coach</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.toolChip, { backgroundColor: 'rgba(99, 102, 241, 0.15)', borderColor: '#6366F1' }]}
+            style={styles.toolChip}
+            activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setProfileModalVisible(true);
             }}
           >
             <Ionicons name="person" size={15} color="#818CF8" />
-            <Text style={[styles.toolChipText, { color: '#818CF8' }]}>Profile & Resumes</Text>
+            <Text style={styles.toolChipText}>Profile & Resumes</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.toolChip, { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: '#38BDF8' }]}
+            style={styles.toolChip}
+            activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setPreferencesModalVisible(true);
             }}
           >
             <Ionicons name="options" size={15} color="#38BDF8" />
-            <Text style={[styles.toolChipText, { color: '#38BDF8' }]}>Preferences</Text>
+            <Text style={styles.toolChipText}>Preferences</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.toolChip, { backgroundColor: 'rgba(20, 184, 166, 0.15)', borderColor: '#14B8A6' }]}
+            style={styles.toolChip}
+            activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setAnswerBankModalVisible(true);
             }}
           >
             <Ionicons name="bookmark" size={15} color="#2DD4BF" />
-            <Text style={[styles.toolChipText, { color: '#2DD4BF' }]}>Answer Bank</Text>
+            <Text style={styles.toolChipText}>Answer Bank</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -594,10 +599,43 @@ export const CareerScreen: React.FC = () => {
           {filteredJobs.length === 0 ? (
             <View style={styles.emptyWrap}>
               <Ionicons name="briefcase-outline" size={42} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>No matching roles found</Text>
-              <Text style={styles.emptySub}>
-                Tap the refresh icon to sync real remote opportunities from live job feeds.
+              <Text style={styles.emptyTitle}>
+                {activeTab === 'Tracker' ? 'No applications in this stage' : 'No matching roles found'}
               </Text>
+              <Text style={styles.emptySub}>
+                {activeTab === 'Tracker'
+                  ? 'Add a job application to track its progress through your pipeline.'
+                  : 'Tap below to sync real remote opportunities from live job feeds.'}
+              </Text>
+              {activeTab === 'Tracker' ? (
+                <TouchableOpacity
+                  style={styles.emptyActionBtn}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setAddJobModalVisible(true);
+                  }}
+                >
+                  <Ionicons name="add-circle" size={16} color="#FFFFFF" />
+                  <Text style={styles.emptyActionBtnText}>+ Add Application</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.emptyActionBtn}
+                  activeOpacity={0.8}
+                  onPress={handleLiveAutoSearch}
+                  disabled={isLoadingLiveJobs}
+                >
+                  {isLoadingLiveJobs ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="refresh" size={16} color="#FFFFFF" />
+                      <Text style={styles.emptyActionBtnText}>Sync Live Feeds</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             filteredJobs.map((job) => {
@@ -615,20 +653,22 @@ export const CareerScreen: React.FC = () => {
                   <GlassCard style={styles.jobCard} variant="elevated">
                     {/* Job Header */}
                     <View style={styles.jobCardTop}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.jobRole}>{job.role}</Text>
+                      <View style={{ flex: 1, marginRight: 10 }}>
+                        <Text style={styles.jobRole} numberOfLines={1}>{job.role}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                          <Text style={styles.jobCompany}>{job.companyName}</Text>
-                          <View style={[styles.platformBadge, { backgroundColor: platform.bg, borderColor: platform.color + '40' }]}>
+                          <Text style={[styles.jobCompany, { flexShrink: 1 }]} numberOfLines={1}>{job.companyName}</Text>
+                          <View style={[styles.platformBadge, { backgroundColor: platform.bg, borderColor: platform.color + '40', flexShrink: 0 }]}>
                             <Ionicons name={platform.icon} size={11} color={platform.color} />
                             <Text style={[styles.platformBadgeText, { color: platform.color }]}>{platform.name}</Text>
                           </View>
                         </View>
                       </View>
-                      <Badge
-                        label={`${matchScore}% Match`}
-                        variant={matchScore >= 80 ? 'primary' : 'gold'}
-                      />
+                      <View style={{ flexShrink: 0, alignSelf: 'flex-start' }}>
+                        <Badge
+                          label={`${matchScore}% Match`}
+                          variant={matchScore >= 80 ? 'primary' : 'gold'}
+                        />
+                      </View>
                     </View>
 
                     {/* Metadata Row */}
@@ -923,16 +963,19 @@ const styles = StyleSheet.create({
   toolChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
     paddingHorizontal: 13,
     paddingVertical: 8,
     borderRadius: Radii.full,
     borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     marginRight: 8,
   },
   toolChipText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
+    color: '#E2E8F0',
   },
 
   // Nav Tabs
@@ -1194,6 +1237,21 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     paddingHorizontal: 24,
+  },
+  emptyActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: Radii.full,
+    marginTop: 10,
+  },
+  emptyActionBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   headerExportBtn: {
     flexDirection: 'row',

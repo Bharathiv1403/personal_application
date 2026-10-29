@@ -321,7 +321,18 @@ export const TodayScreen: React.FC = () => {
         {tasks.length === 0 ? (
           <GlassCard style={styles.emptyTasksCard}>
             <Ionicons name="checkmark-done-circle-outline" size={32} color={Colors.primary} />
-            <Text style={styles.emptyTasksText}>All tasks completed! Tap + Add Task to add new priorities.</Text>
+            <Text style={styles.emptyTasksText}>All tasks completed! Ready for new focus items?</Text>
+            <TouchableOpacity
+              style={styles.inlineAddPriorityBtn}
+              activeOpacity={0.8}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                setIsAddTaskModalVisible(true);
+              }}
+            >
+              <Ionicons name="add-circle" size={16} color="#FFFFFF" />
+              <Text style={styles.inlineAddPriorityBtnText}>+ Add Daily Priority</Text>
+            </TouchableOpacity>
           </GlassCard>
         ) : (
           tasks.map((task, index) => (
@@ -596,6 +607,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textMuted,
     textAlign: 'center',
+  },
+  inlineAddPriorityBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: Radii.full,
+    marginTop: 6,
+  },
+  inlineAddPriorityBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   taskCard: {
     flexDirection: 'row',

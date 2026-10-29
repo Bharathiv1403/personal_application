@@ -192,12 +192,22 @@ export const HealthScreen: React.FC = () => {
 
           {/* Quick Add Buttons */}
           <View style={styles.waterActionsRow}>
-            <TouchableOpacity style={styles.waterBtn} onPress={() => handleWaterTap(250)}>
-              <Ionicons name="add" size={14} color={Colors.cyan} />
+            <TouchableOpacity
+              style={styles.waterBtn}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              onPress={() => handleWaterTap(250)}
+            >
+              <Ionicons name="add" size={15} color={Colors.cyan} />
               <Text style={styles.waterBtnText}>+250 ml Glass</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.waterBtn} onPress={() => handleWaterTap(500)}>
-              <Ionicons name="add" size={14} color={Colors.cyan} />
+            <TouchableOpacity
+              style={styles.waterBtn}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              onPress={() => handleWaterTap(500)}
+            >
+              <Ionicons name="add" size={15} color={Colors.cyan} />
               <Text style={styles.waterBtnText}>+500 ml Bottle</Text>
             </TouchableOpacity>
           </View>
@@ -442,14 +452,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cyanGlow,
     borderWidth: 1,
     borderColor: 'rgba(6, 182, 212, 0.3)',
-    paddingVertical: 9,
-    borderRadius: Radii.md,
+    paddingVertical: 11,
+    borderRadius: Radii.lg,
     gap: 6,
   },
   waterBtnText: {
     fontSize: 12,
     color: Colors.cyan,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   miniCardsRow: {
     flexDirection: 'row',
