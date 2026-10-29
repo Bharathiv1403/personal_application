@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScreenContainer } from '@/core/design-system/primitives/ScreenContainer';
 import { GlassCard } from '@/core/design-system/primitives/GlassCard';
 import { Colors } from '@/core/design-system/tokens/colors';
@@ -39,13 +40,56 @@ export const AgentScreen: React.FC = () => {
     return 'Good evening';
   };
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      sender: 'agent',
-      text: `${getGreeting()} ${userName}! I am AAYON, your AI Executive Copilot. I'm connected to your live health, career pipeline, and financial records. How can I help you excel today?`,
-    },
-  ]);
+  const CHAT_STORAGE_KEY = '@aayon:ai_chat_history_v1';
+
+  const defaultWelcomeMsg: ChatMessage = {
+    id: '1',
+    sender: 'agent',
+    text: `${getGreeting()} ${userName}! I am AAYON, your AI Executive Copilot. I'm connected to your live health, career pipeline, and financial records. How can I help you excel today?`,
+  };
+
+  const [messages, setMessages] = useState<ChatMessage[]>([defaultWelcomeMsg]);
+
+  // Load chat history on mount
+  useEffect(() => {
+    AsyncStorage.getItem(CHAT_STORAGE_KEY).then((json) => {
+      if (json) {
+        try {
+          const parsed = JSON.parse(json);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed);
+          }
+        } catch {}
+      }
+    });
+  }, []);
+
+  const persistMessages = async (msgs: ChatMessage[]) => {
+    setMessages(msgs);
+    try {
+      await AsyncStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(msgs.slice(-60)));
+    } catch {}
+  };
+
+  const handleClearChat = () => {
+    Alert.alert(
+      'Clear Conversation 🗑️',
+      'Start a new chat session? Previous chat history will be erased.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear Chat',
+          style: 'destructive',
+          onPress: async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+            const reset = [defaultWelcomeMsg];
+            setMessages(reset);
+            await AsyncStorage.removeItem(CHAT_STORAGE_KEY);
+          },
+        },
+      ]
+    );
+  };
 
   const speakLastMessage = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -68,7 +112,8 @@ export const AgentScreen: React.FC = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
     const userMsg: ChatMessage = { id: Date.now().toString(), sender: 'user', text: messageToSend };
-    setMessages((prev) => [...prev, userMsg]);
+    const updatedWithUser = [...messages, userMsg];
+    persistMessages(updatedWithUser);
     setInput('');
     setIsLoading(true);
 
@@ -89,14 +134,14 @@ export const AgentScreen: React.FC = () => {
         sender: 'agent',
         text: reply,
       };
-      setMessages((prev) => [...prev, replyMsg]);
+      persistMessages([...updatedWithUser, replyMsg]);
     } catch {
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'agent',
-        text: "Sorry, I couldn't reach the AI network. Please check your connection or API key.",
+        text: "Network error: Unable to reach AI servers. Please check your internet connection or verify your API key in Settings.",
       };
-      setMessages((prev) => [...prev, errorMsg]);
+      persistMessages([...updatedWithUser, errorMsg]);
     } finally {
       setIsLoading(false);
     }
@@ -113,25 +158,39 @@ export const AgentScreen: React.FC = () => {
           {/* Header */}
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
-            <Text style={styles.title}>AAYON • AI Copilot</Text>
-            <Text style={styles.subtitle}>Executive Assistant & Career Mentor</Text>
+              <Text style={styles.title}>AAYON • AI Copilot</Text>
+              <Text style={styles.subtitle}>Executive Assistant & Career Mentor</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {messages.length > 1 && (
+                <TouchableOpacity
+                  style={styles.keyBtn}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  onPress={handleClearChat}
+                >
+                  <Ionicons name="trash-outline" size={17} color={Colors.textMuted} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.keyBtn, !hasKey && styles.keyBtnHighlight]}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                onPress={() => setApiKeyModalVisible(true)}
+              >
+                <Ionicons
+                  name={hasKey ? 'key' : 'key-outline'}
+                  size={18}
+                  color={hasKey ? '#10B981' : '#F59E0B'}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.voiceBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                onPress={speakLastMessage}
+              >
+                <Ionicons name="volume-high-outline" size={20} color={Colors.purple} />
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity
-              style={[styles.keyBtn, !hasKey && styles.keyBtnHighlight]}
-              onPress={() => setApiKeyModalVisible(true)}
-            >
-              <Ionicons
-                name={hasKey ? 'key' : 'key-outline'}
-                size={18}
-                color={hasKey ? '#10B981' : '#F59E0B'}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.voiceBtn} onPress={speakLastMessage}>
-              <Ionicons name="volume-high-outline" size={20} color={Colors.purple} />
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* Free API Key Prompt Banner */}
         {!hasKey && (

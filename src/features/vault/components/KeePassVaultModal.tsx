@@ -150,38 +150,64 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
 
   // Export Backup
   const handleExportBackup = async () => {
-    try {
-      const json = VaultCryptoService.exportVaultJSON(entries);
-      await Share.share({
-        title: 'KeePassDX Vault Backup',
-        message: json,
-      });
-    } catch {
-      Alert.alert('Export Failed', 'Unable to create backup.');
-    }
+    Alert.alert(
+      'Export KeePass Vault',
+      'Choose export format for interoperability with KeePassDX / KeePassXC:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'KeePass CSV (KeePassDX / KeePassXC)',
+          onPress: async () => {
+            try {
+              const csv = VaultCryptoService.exportVaultCSV(entries);
+              await Share.share({
+                title: 'KeePassDX Standard CSV Export',
+                message: csv,
+              });
+            } catch {
+              Alert.alert('Export Failed', 'Unable to create CSV export.');
+            }
+          },
+        },
+        {
+          text: 'Full JSON Backup',
+          onPress: async () => {
+            try {
+              const json = VaultCryptoService.exportVaultJSON(entries);
+              await Share.share({
+                title: 'KeePassDX Vault JSON Backup',
+                message: json,
+              });
+            } catch {
+              Alert.alert('Export Failed', 'Unable to create JSON backup.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Import Backup
   const handleImportBackup = async () => {
     try {
       const clipboardText = await Clipboard.getStringAsync();
-      const hasClipboardJson = clipboardText && (clipboardText.trim().startsWith('{') || clipboardText.trim().startsWith('['));
+      const hasClipboardData = Boolean(clipboardText && clipboardText.trim().length > 10);
 
-      if (hasClipboardJson) {
+      if (hasClipboardData) {
         Alert.alert(
-          'Import KeePassDX Backup',
-          'Found backup data on your clipboard! Do you want to import it now?',
+          'Import KeePassDX Data',
+          'Found vault backup data on your clipboard (JSON or KeePass CSV)! Do you want to import it now?',
           [
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Import Clipboard Data',
               onPress: () => {
-                const imported = VaultCryptoService.importVaultJSON(clipboardText);
+                const imported = VaultCryptoService.importVaultUniversal(clipboardText);
                 if (imported.length > 0) {
                   const count = importEntries(imported);
                   Alert.alert('Import Complete 🎉', `Imported ${count} new vault entries successfully.`);
                 } else {
-                  Alert.alert('Import Error', 'Invalid backup format or no entries found in clipboard data.');
+                  Alert.alert('Import Error', 'Invalid format. Ensure valid KeePass JSON or CSV on clipboard.');
                 }
               },
             },
@@ -193,14 +219,14 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
       if (Platform.OS === 'ios' && Alert.prompt) {
         Alert.prompt(
           'Import KeePassDX Backup',
-          'Paste your exported JSON vault string here:',
+          'Paste your exported JSON or CSV vault string here:',
           [
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Import',
               onPress: (rawText?: string) => {
                 if (!rawText) return;
-                const imported = VaultCryptoService.importVaultJSON(rawText);
+                const imported = VaultCryptoService.importVaultUniversal(rawText);
                 if (imported.length > 0) {
                   const count = importEntries(imported);
                   Alert.alert('Import Complete', `Imported ${count} new vault entries successfully.`);
@@ -215,7 +241,7 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
       } else {
         Alert.alert(
           'Import KeePassDX Backup',
-          'Copy your exported KeePassDX JSON backup text to your clipboard first, then tap this button to import it with one tap.'
+          'Copy your exported KeePassDX JSON or CSV text to your clipboard first, then tap this button to import it with one tap.'
         );
       }
     } catch {

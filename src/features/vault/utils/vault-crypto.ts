@@ -120,6 +120,118 @@ export class VaultCryptoService {
   }
 
   /**
+   * Generates standard KeePass CSV export format.
+   * Format: "Group","Title","Username","Password","URL","Notes","TOTP"
+   * Fully compatible with KeePassDX, KeePassXC, KeePass 2.x, and Bitwarden CSV import wizards.
+   */
+  static exportVaultCSV(entries: VaultEntry[]): string {
+    const headers = ['"Group"', '"Title"', '"Username"', '"Password"', '"URL"', '"Notes"', '"TOTP"'];
+    const rows = entries.map((e) => {
+      const escape = (val: string = '') => `"${val.replace(/"/g, '""')}"`;
+      return [
+        escape(e.group || 'General'),
+        escape(e.title),
+        escape(e.username),
+        escape(e.password),
+        escape(e.url || ''),
+        escape(e.notes || ''),
+        escape(e.totpSecret || ''),
+      ].join(',');
+    });
+    return [headers.join(','), ...rows].join('\n');
+  }
+
+  /**
+   * Parses standard KeePass CSV string into VaultEntry objects.
+   */
+  static importVaultCSV(csvString: string): VaultEntry[] {
+    try {
+      const lines = csvString.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      if (lines.length < 2) return [];
+
+      const entries: VaultEntry[] = [];
+      const now = new Date().toISOString();
+
+      // Simple CSV line parser respecting quotes
+      const parseCSVLine = (line: string): string[] => {
+        const result: string[] = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              cur += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (char === ',' && !inQuotes) {
+            result.push(cur);
+            cur = '';
+          } else {
+            cur += char;
+          }
+        }
+        result.push(cur);
+        return result;
+      };
+
+      const headerCells = parseCSVLine(lines[0]).map((h) => h.toLowerCase().trim().replace(/^"|"$/g, ''));
+      const groupIdx = headerCells.findIndex((h) => h.includes('group'));
+      const titleIdx = headerCells.findIndex((h) => h.includes('title') || h.includes('name'));
+      const userIdx = headerCells.findIndex((h) => h.includes('user') || h.includes('login'));
+      const passIdx = headerCells.findIndex((h) => h.includes('pass'));
+      const urlIdx = headerCells.findIndex((h) => h.includes('url') || h.includes('website'));
+      const notesIdx = headerCells.findIndex((h) => h.includes('note') || h.includes('comment'));
+      const totpIdx = headerCells.findIndex((h) => h.includes('totp') || h.includes('2fa') || h.includes('otp'));
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i]);
+        const title = (titleIdx >= 0 ? cols[titleIdx] : cols[0])?.trim() || 'Imported Entry';
+        const password = (passIdx >= 0 ? cols[passIdx] : '') || '';
+        const username = (userIdx >= 0 ? cols[userIdx] : '') || '';
+        const url = (urlIdx >= 0 ? cols[urlIdx] : '') || undefined;
+        const notes = (notesIdx >= 0 ? cols[notesIdx] : '') || '';
+        const totp = (totpIdx >= 0 ? cols[totpIdx] : '') || undefined;
+        const group = (groupIdx >= 0 ? cols[groupIdx] : 'logins')?.toLowerCase().trim() || 'logins';
+
+        entries.push({
+          id: `vault_csv_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`,
+          title,
+          username,
+          password,
+          url,
+          totpSecret: totp,
+          group: (['logins', 'cards', 'servers', 'secure_notes', 'identities'].includes(group) ? group : 'logins') as any,
+          notes,
+          tags: ['CSV-Imported'],
+          isFavorite: false,
+          history: [],
+          createdAt: now,
+          updatedAt: now,
+          passwordUpdatedAt: now,
+        });
+      }
+
+      return entries;
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Universal vault string importer: automatically identifies JSON vs KeePass CSV.
+   */
+  static importVaultUniversal(rawText: string): VaultEntry[] {
+    const trimmed = rawText.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      return this.importVaultJSON(trimmed);
+    }
+    return this.importVaultCSV(trimmed);
+  }
+
+  /**
    * Imports entries from JSON / KeePass export formats.
    */
   static importVaultJSON(jsonString: string): VaultEntry[] {
