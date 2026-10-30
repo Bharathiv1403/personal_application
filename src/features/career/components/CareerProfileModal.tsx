@@ -47,8 +47,10 @@ export const CareerProfileModal: React.FC<Props> = ({ visible, onClose }) => {
   const [githubUrl, setGithubUrl] = useState(profile.githubUrl);
   const [portfolioUrl, setPortfolioUrl] = useState(profile.portfolioUrl);
 
+  const prevVisibleRef = React.useRef(false);
+
   React.useEffect(() => {
-    if (visible) {
+    if (visible && !prevVisibleRef.current) {
       setName(profile.name);
       setEmail(profile.email);
       setPhone(profile.phone);
@@ -57,6 +59,7 @@ export const CareerProfileModal: React.FC<Props> = ({ visible, onClose }) => {
       setGithubUrl(profile.githubUrl);
       setPortfolioUrl(profile.portfolioUrl);
     }
+    prevVisibleRef.current = visible;
   }, [visible, profile]);
 
   // New Education state

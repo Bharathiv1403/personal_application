@@ -147,11 +147,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       };
 
       await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
-      const existingPin = await SecureStore.getItemAsync(PIN_SECURE_KEY);
       if (customPin && customPin.length >= 4) {
         await SecureStore.setItemAsync(PIN_SECURE_KEY, customPin);
-      } else if (!existingPin) {
-        await SecureStore.setItemAsync(PIN_SECURE_KEY, '1234');
       }
 
       // Sync active identity to Career Profile

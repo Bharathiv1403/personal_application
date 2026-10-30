@@ -12,14 +12,21 @@ import { AIService, ChatMessage } from '@/core/utils/ai-service';
 import { useHealthStore } from '@/features/health/state/health-store';
 import { useWealthStore } from '@/features/wealth/state/wealth-store';
 import { useJobStore } from '@/features/career/state/job-store';
+import { useTodoStore } from '@/features/todo/state/todo-store';
 import { useAuthStore } from '@/features/auth/state/auth-store';
 import { useAiConfigStore } from '@/core/state/ai-config-store';
 import { ApiKeyModal } from '@/core/components/ApiKeyModal';
+import { PreInterviewFlashcardsModal } from '@/features/career/components/PreInterviewFlashcardsModal';
+import { SundayResetModal } from '@/features/today/components/SundayResetModal';
+import { SecondBrainModal } from '@/features/notes/components/SecondBrainModal';
 
 export const AgentScreen: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [apiKeyModalVisible, setApiKeyModalVisible] = useState(false);
+  const [flashcardsVisible, setFlashcardsVisible] = useState(false);
+  const [sundayResetVisible, setSundayResetVisible] = useState(false);
+  const [secondBrainVisible, setSecondBrainVisible] = useState(false);
 
   const isAiConfigured = useAiConfigStore((s) => s.isConfigured);
   const hasKey = isAiConfigured || AIService.hasConfiguredKey();
@@ -103,18 +110,125 @@ export const AgentScreen: React.FC = () => {
     const messageToSend = (customPrompt || input).trim();
     if (!messageToSend || isLoading) return;
 
-    if (!hasKey) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-      setApiKeyModalVisible(true);
-      return;
-    }
-
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
     const userMsg: ChatMessage = { id: Date.now().toString(), sender: 'user', text: messageToSend };
     const updatedWithUser = [...messages, userMsg];
     persistMessages(updatedWithUser);
     setInput('');
+
+    const lower = messageToSend.toLowerCase();
+
+    // Tool 1: 10-Min Flashcards
+    if (lower.includes('flashcard') || lower.includes('flash cards')) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setFlashcardsVisible(true);
+      const replyMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'agent',
+        text: '⚡ Launching your 10-Minute Pre-Interview High-Yield Technical Flashcards now! Review React Native architecture, JS event loop, and system design patterns.',
+      };
+      persistMessages([...updatedWithUser, replyMsg]);
+      return;
+    }
+
+    // Tool 2: Sunday Reset
+    if (lower.includes('sunday reset') || lower.includes('weekly review') || lower.includes('retrospective')) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setSundayResetVisible(true);
+      const replyMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'agent',
+        text: '🕯️ Opening your Sunday Reset ritual. Let’s review your scorecard, reflect on breakthroughs, and set your 3 critical priorities for the week ahead.',
+      };
+      persistMessages([...updatedWithUser, replyMsg]);
+      return;
+    }
+
+    // Tool 3: Second Brain / Notes Vault
+    if (lower.includes('second brain') || lower.includes('open notes') || lower.includes('code snippet') || lower.includes('read later')) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setSecondBrainVisible(true);
+      const replyMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'agent',
+        text: '📝 Opening your Second Brain & Developer Vault. You can search notes, copy snippets, and manage read-later bookmarks.',
+      };
+      persistMessages([...updatedWithUser, replyMsg]);
+      return;
+    }
+
+    // Tool 4: Hydration Logging
+    const waterMatch = lower.match(/(?:log|drink|add)\s*(?:water)?\s*(\d+)\s*(?:ml)?/i);
+    if (waterMatch) {
+      const ml = parseInt(waterMatch[1], 10);
+      if (ml > 0) {
+        useHealthStore.getState().addWater(ml);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        const replyMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'agent',
+          text: `💧 Hydration Logged! Added ${ml}ml to your daily water intake. Current total: ${useHealthStore.getState().waterIntakeMl}ml. Keep staying hydrated!`,
+        };
+        persistMessages([...updatedWithUser, replyMsg]);
+        return;
+      }
+    }
+
+    // Tool 5: Quick Task Creation
+    const taskMatch = messageToSend.match(/(?:add|create|new)\s*task:?\s*(.+)/i) || messageToSend.match(/(?:remind me to|todo:?)\s*(.+)/i);
+    if (taskMatch) {
+      const taskTitle = taskMatch[1].trim();
+      useTodoStore.getState().addTodo({
+        title: taskTitle,
+        category: 'Work',
+        priority: 'high',
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      const replyMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'agent',
+        text: `✅ Task Created! "${taskTitle}" has been scheduled into your Daily Command Center agenda.`,
+      };
+      persistMessages([...updatedWithUser, replyMsg]);
+      return;
+    }
+
+    // Tool 6: Quick Job Application
+    const jobMatch = messageToSend.match(/(?:add|apply|record)\s*(?:job|application):?\s*(.+)/i);
+    if (jobMatch) {
+      const details = jobMatch[1].trim();
+      const parts = details.split(/ at | @ |,|-/i);
+      const role = parts[0]?.trim() || 'Software Engineer';
+      const company = parts[1]?.trim() || 'Tech Enterprise';
+      useJobStore.getState().addJob({
+        companyName: company,
+        role: role,
+        location: 'Remote / Hybrid',
+        workMode: 'Remote',
+        ctcMin: 22,
+        ctcMax: 35,
+        stage: 'applied',
+        appliedDate: new Date().toISOString().slice(0, 10),
+        source: 'AI Assistant',
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      const replyMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'agent',
+        text: `💼 Application Tracked! Added "${role} at ${company}" to your Career Kanban Pipeline with stage set to "Applied".`,
+      };
+      persistMessages([...updatedWithUser, replyMsg]);
+      return;
+    }
+
+    // Standard AI LLM Execution
+    if (!hasKey) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      setApiKeyModalVisible(true);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -212,26 +326,49 @@ export const AgentScreen: React.FC = () => {
         )}
 
         {/* Quick Launchers */}
-        <View style={styles.launchersRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.launchersScrollView}
+          contentContainerStyle={styles.launchersScrollContent}
+        >
+          <TouchableOpacity
+            style={[styles.launcherChip, { borderColor: Colors.gold }]}
+            onPress={() => setFlashcardsVisible(true)}
+          >
+            <Text style={[styles.launcherText, { color: Colors.gold }]}>⚡ 10m Flashcards</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.launcherChip, { borderColor: Colors.purple }]}
+            onPress={() => setSundayResetVisible(true)}
+          >
+            <Text style={[styles.launcherText, { color: Colors.purple }]}>🕯️ Sunday Reset</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.launcherChip, { borderColor: Colors.cyan }]}
+            onPress={() => setSecondBrainVisible(true)}
+          >
+            <Text style={[styles.launcherText, { color: Colors.cyan }]}>📝 Second Brain</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.launcherChip}
+            onPress={() => handleSend("Log 500ml water")}
+          >
+            <Text style={styles.launcherText}>💧 +500ml Water</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.launcherChip}
+            onPress={() => handleSend("Add task: Complete React Native performance audit")}
+          >
+            <Text style={styles.launcherText}>✅ Add Task</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.launcherChip}
             onPress={() => handleSend("Give me a 5-minute system design interview quick prep summary")}
           >
-            <Text style={styles.launcherText}>⚡ 5m Interview Prep</Text>
+            <Text style={styles.launcherText}>⚡ 5m System Design</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.launcherChip}
-            onPress={() => handleSend("What are my financial and health priorities right now?")}
-          >
-            <Text style={styles.launcherText}>📊 Daily Status Check</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.launcherChip}
-            onPress={() => handleSend("Give me 3 tips to negotiate a higher tech salary in Chennai/Bangalore")}
-          >
-            <Text style={styles.launcherText}>💼 Salary Negotiation</Text>
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
 
         {/* Messages Stream */}
         <ScrollView style={styles.messagesList} contentContainerStyle={styles.messagesContent}>
@@ -296,6 +433,21 @@ export const AgentScreen: React.FC = () => {
       <ApiKeyModal
         visible={apiKeyModalVisible}
         onClose={() => setApiKeyModalVisible(false)}
+      />
+
+      <PreInterviewFlashcardsModal
+        visible={flashcardsVisible}
+        onClose={() => setFlashcardsVisible(false)}
+      />
+
+      <SundayResetModal
+        visible={sundayResetVisible}
+        onClose={() => setSundayResetVisible(false)}
+      />
+
+      <SecondBrainModal
+        visible={secondBrainVisible}
+        onClose={() => setSecondBrainVisible(false)}
       />
     </ScreenContainer>
   );
@@ -374,6 +526,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  launchersScrollView: {
+    marginVertical: Spacing.xs,
+    maxHeight: 38,
+  },
+  launchersScrollContent: {
+    gap: 8,
+    paddingRight: Spacing.md,
   },
   launchersRow: {
     flexDirection: 'row',

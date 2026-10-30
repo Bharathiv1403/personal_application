@@ -49,16 +49,16 @@ export const OnboardingScreen: React.FC = () => {
   const setMonthlySalary = useWealthStore((s) => s.setMonthlySalary);
 
   // Form State
-  const [targetRole, setTargetRole] = useState(profile.targetRole || 'Frontend Developer & Lead');
-  const [experience, setExperience] = useState(profile.yearsOfExperience || '2+ years');
-  const [noticePeriod, setNoticePeriod] = useState(profile.noticePeriod || '30 Days');
-  const [expectedCTC, setExpectedCTC] = useState(profile.expectedCTC || '24 - 30 LPA');
-  const [skills, setSkills] = useState<string[]>(profile.skills);
+  const [targetRole, setTargetRole] = useState(profile.targetRole || '');
+  const [experience, setExperience] = useState(profile.yearsOfExperience || '');
+  const [noticePeriod, setNoticePeriod] = useState(profile.noticePeriod || '');
+  const [expectedCTC, setExpectedCTC] = useState(profile.expectedCTC || '');
+  const [skills, setSkills] = useState<string[]>(profile.skills || []);
   const [newSkillText, setNewSkillText] = useState('');
 
-  const [stepGoalText, setStepGoalText] = useState('10000');
-  const [waterGoalText, setWaterGoalText] = useState('3000');
-  const [salaryText, setSalaryText] = useState('120000');
+  const [stepGoalText, setStepGoalText] = useState('');
+  const [waterGoalText, setWaterGoalText] = useState('');
+  const [salaryText, setSalaryText] = useState('');
 
   const toggleSkill = (skill: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});

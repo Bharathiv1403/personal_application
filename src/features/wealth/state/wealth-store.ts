@@ -35,6 +35,8 @@ export interface Transaction {
   paymentMethod: PaymentMethod;
   merchant?: string;
   description?: string;
+  receiptUri?: string;
+  receiptName?: string;
   tags?: string[];
   createdAt: string;
 }
@@ -176,6 +178,27 @@ export interface GroceryItem {
   category: 'provisions' | 'vegetables' | 'dairy' | 'household';
 }
 
+export interface FixedDeposit {
+  id: string;
+  bankName: string;
+  principal: number;
+  interestRatePercent: number; // e.g. 7.25%
+  maturityDate: string; // YYYY-MM-DD
+  tenureMonths: number;
+  maturityAmount: number;
+}
+
+export interface ChitFund {
+  id: string;
+  chitName: string;
+  totalAmount: number; // e.g. 100000 (1 Lakh chit)
+  monthlyInstallment: number; // e.g. 5000
+  totalMonths: number; // e.g. 20
+  paidMonths: number; // e.g. 7
+  dividendEarned: number; // e.g. 3500
+  status: 'ongoing' | 'auctioned' | 'completed';
+}
+
 // ==========================================
 // Default Seed Constants
 // ==========================================
@@ -234,6 +257,10 @@ export interface WealthState {
   // Legacy/Gold & Vatti Collections
   monthlySalary: number;
   currentGoldRatePerGram: number;
+  silverGrams: number;
+  silverRatePerGram: number;
+  fixedDeposits: FixedDeposit[];
+  chitFunds: ChitFund[];
   loans: LoanItem[];
   goldItems: GoldHolding[];
   trips: Trip[];
@@ -277,6 +304,13 @@ export interface WealthState {
   // Legacy Actions & Enhanced Trips
   setMonthlySalary: (amount: number) => void;
   setGoldRate: (rate: number) => void;
+  setSilverGrams: (grams: number) => void;
+  setSilverRate: (rate: number) => void;
+  addFixedDeposit: (fd: Omit<FixedDeposit, 'id'>) => void;
+  deleteFixedDeposit: (id: string) => void;
+  addChitFund: (chit: Omit<ChitFund, 'id'>) => void;
+  incrementChitPaidMonth: (id: string, dividend?: number) => void;
+  deleteChitFund: (id: string) => void;
   addLoan: (params: {
     lenderName: string;
     lenderPhone?: string;
@@ -305,6 +339,7 @@ export interface WealthState {
   toggleTripStatus: (tripId: string) => void;
   addGroceryItem: (name: string, approxPrice: number, category: GroceryItem['category']) => void;
   toggleGroceryItem: (id: string) => void;
+  deleteGroceryItem: (id: string) => void;
   clearPurchasedGroceries: () => void;
   restoreBackupData: (backupJson: string) => boolean;
   resetAllData: () => void;
@@ -323,6 +358,10 @@ export const useWealthStore = create<WealthState>()(
 
       monthlySalary: 0,
       currentGoldRatePerGram: 7850,
+      silverGrams: 0,
+      silverRatePerGram: 102,
+      fixedDeposits: [],
+      chitFunds: [],
       loans: [],
       goldItems: [],
       trips: [],
@@ -754,6 +793,49 @@ export const useWealthStore = create<WealthState>()(
         set((state) => ({ goldItems: state.goldItems.filter((g) => g.id !== id) }));
       },
 
+      setSilverGrams: (grams) => set({ silverGrams: Math.max(0, grams) }),
+
+      setSilverRate: (rate) => set({ silverRatePerGram: Math.max(0, rate) }),
+
+      addFixedDeposit: (fd) => {
+        const newFd: FixedDeposit = {
+          ...fd,
+          id: `fd-${Date.now()}`,
+        };
+        set((state) => ({ fixedDeposits: [newFd, ...state.fixedDeposits] }));
+      },
+
+      deleteFixedDeposit: (id) => {
+        set((state) => ({ fixedDeposits: state.fixedDeposits.filter((f) => f.id !== id) }));
+      },
+
+      addChitFund: (chit) => {
+        const newChit: ChitFund = {
+          ...chit,
+          id: `chit-${Date.now()}`,
+        };
+        set((state) => ({ chitFunds: [newChit, ...state.chitFunds] }));
+      },
+
+      incrementChitPaidMonth: (id, dividend = 0) => {
+        set((state) => ({
+          chitFunds: state.chitFunds.map((c) => {
+            if (c.id !== id) return c;
+            const updatedPaid = Math.min(c.totalMonths, c.paidMonths + 1);
+            return {
+              ...c,
+              paidMonths: updatedPaid,
+              dividendEarned: c.dividendEarned + dividend,
+              status: updatedPaid >= c.totalMonths ? 'completed' : c.status,
+            };
+          }),
+        }));
+      },
+
+      deleteChitFund: (id) => {
+        set((state) => ({ chitFunds: state.chitFunds.filter((c) => c.id !== id) }));
+      },
+
       addTrip: (name, budget, members, initialContributions = [], tripType = 'group') => {
         const isSolo = tripType === 'solo';
         const finalMembers = isSolo ? ['Me (Self)'] : members.length > 0 ? members : ['Me (Self)'];
@@ -861,6 +943,12 @@ export const useWealthStore = create<WealthState>()(
         }));
       },
 
+      deleteGroceryItem: (id) => {
+        set((state) => ({
+          groceries: state.groceries.filter((item) => item.id !== id),
+        }));
+      },
+
       clearPurchasedGroceries: () => {
         set((state) => ({ groceries: state.groceries.filter((g) => !g.isPurchased) }));
       },
@@ -880,6 +968,10 @@ export const useWealthStore = create<WealthState>()(
             goldItems: Array.isArray(parsed.goldItems) ? parsed.goldItems : get().goldItems,
             trips: Array.isArray(parsed.trips) ? parsed.trips : get().trips,
             peerDebts: Array.isArray(parsed.peerDebts) ? parsed.peerDebts : get().peerDebts,
+            silverGrams: typeof parsed.silverGrams === 'number' ? parsed.silverGrams : get().silverGrams,
+            silverRatePerGram: typeof parsed.silverRatePerGram === 'number' ? parsed.silverRatePerGram : get().silverRatePerGram,
+            fixedDeposits: Array.isArray(parsed.fixedDeposits) ? parsed.fixedDeposits : get().fixedDeposits,
+            chitFunds: Array.isArray(parsed.chitFunds) ? parsed.chitFunds : get().chitFunds,
             monthlySalary:
               typeof parsed.monthlySalary === 'number' ? parsed.monthlySalary : get().monthlySalary,
           });
@@ -899,6 +991,10 @@ export const useWealthStore = create<WealthState>()(
           monthlySalary: 0,
           loans: [],
           goldItems: [],
+          silverGrams: 0,
+          silverRatePerGram: 102,
+          fixedDeposits: [],
+          chitFunds: [],
           trips: [],
           peerDebts: [],
           groceries: [],

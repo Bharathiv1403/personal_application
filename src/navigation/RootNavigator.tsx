@@ -13,6 +13,9 @@ import { useAuthStore } from '@/features/auth/state/auth-store';
 import { useAiConfigStore } from '@/core/state/ai-config-store';
 import { NotificationService } from '@/core/utils/notification-service';
 import { Colors } from '@/core/design-system/tokens/colors';
+import { ScreenTimeTracker } from '@/core/services/screen-time-tracker';
+import { ScreenTimeLimitModal } from '@/features/health/components/ScreenTimeLimitModal';
+import { useHealthStore } from '@/features/health/state/health-store';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -37,15 +40,18 @@ export const RootNavigator: React.FC = () => {
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
   const initializeAiConfig = useAiConfigStore((s) => s.initialize);
 
+  const isScreenLimitModalVisible = useHealthStore((s) => s.isScreenLimitModalVisible);
   const backgroundTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     initializeAuth();
     initializeAiConfig();
+    ScreenTimeTracker.init();
 
     NotificationService.requestPermissions().then((granted) => {
       if (granted) {
         NotificationService.scheduleDailyBriefing();
+        NotificationService.scheduleHydrationReminder();
       }
     });
 
@@ -67,6 +73,7 @@ export const RootNavigator: React.FC = () => {
 
     return () => {
       subscription.remove();
+      ScreenTimeTracker.destroy();
     };
   }, [initializeAuth, initializeAiConfig]);
 
@@ -79,41 +86,49 @@ export const RootNavigator: React.FC = () => {
   }
 
   return (
-    <NavigationContainer theme={DarkNavigationTheme}>
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: Colors.background },
-          animation: 'fade',
-        }}
-      >
-        {!hasAccount ? (
-          // First time user: Sign up & create vault
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-        ) : !isAuthenticated ? (
-          // Returning user: Lock screen with PIN & Biometrics
-          <Stack.Screen name="SignIn" component={SignInScreen} />
-        ) : !hasCompletedOnboarding ? (
-          // First time after sign-up: Career, resume & goal onboarding wizard
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        ) : (
-          // Authenticated: Main App + Settings + Todo
-          <>
-            <Stack.Screen name="MainTabs" component={BottomTabNavigator} />
-            <Stack.Screen
-              name="Settings"
-              component={SettingsScreen}
-              options={{ animation: 'slide_from_right' }}
-            />
-            <Stack.Screen
-              name="TodoList"
-              component={TodoListScreen}
-              options={{ animation: 'slide_from_right' }}
-            />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <>
+      <NavigationContainer theme={DarkNavigationTheme}>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: Colors.background },
+            animation: 'fade',
+          }}
+        >
+          {!hasAccount ? (
+            // First time user: Sign up & create vault
+            <Stack.Screen name="SignUp" component={SignUpScreen} />
+          ) : !hasCompletedOnboarding ? (
+            // First time after sign-up: Career, resume & goal onboarding wizard
+            <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          ) : (
+            // Returning user: Keep MainTabs mounted so forms & modals are NEVER destroyed on app switch!
+            <>
+              <Stack.Screen name="MainTabs" component={BottomTabNavigator} />
+              <Stack.Screen
+                name="Settings"
+                component={SettingsScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <Stack.Screen
+                name="TodoList"
+                component={TodoListScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+            </>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+
+      {/* Persistent Security Lock Overlay: Keeps MainTabs & all typed input values 100% preserved */}
+      {hasAccount && !isAuthenticated && (
+        <View style={styles.lockOverlayContainer}>
+          <SignInScreen />
+        </View>
+      )}
+
+      <ScreenTimeLimitModal visible={isScreenLimitModalVisible} />
+    </>
   );
 };
 
@@ -123,5 +138,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  lockOverlayContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 9999,
+    elevation: 9999,
+    backgroundColor: Colors.background,
   },
 });

@@ -91,7 +91,7 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
       setPinInput('');
       setPinError('');
     } else {
-      setPinError('Incorrect PIN. Default is 1403 or your security PIN.');
+      setPinError('Incorrect PIN. Please enter your valid security PIN.');
       setPinInput('');
     }
   };

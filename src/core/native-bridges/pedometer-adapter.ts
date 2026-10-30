@@ -1,12 +1,16 @@
 import { Pedometer } from 'expo-sensors';
+import { Platform } from 'react-native';
 
 export interface PedometerStatus {
   isAvailable: boolean;
   permissionGranted: boolean;
+  hasHistoricalSupport: boolean;
 }
 
 export class PedometerService {
-  private static subscription: { remove: () => void } | null = null;
+  private static nativeSubscription: { remove: () => void } | null = null;
+  private static listeners = new Set<(deltaSteps: number) => void>();
+  private static lastCumulativeSteps: number = 0;
 
   static async checkAvailability(): Promise<PedometerStatus> {
     try {
@@ -22,9 +26,10 @@ export class PedometerService {
       return {
         isAvailable,
         permissionGranted: granted,
+        hasHistoricalSupport: Platform.OS === 'ios',
       };
     } catch {
-      return { isAvailable: false, permissionGranted: false };
+      return { isAvailable: false, permissionGranted: false, hasHistoricalSupport: false };
     }
   }
 
@@ -32,6 +37,11 @@ export class PedometerService {
     try {
       const { isAvailable, permissionGranted } = await this.checkAvailability();
       if (!isAvailable || !permissionGranted) return 0;
+
+      // Note: getStepCountAsync is only supported on iOS in expo-sensors
+      if (Platform.OS !== 'ios') {
+        return 0;
+      }
 
       const start = new Date();
       start.setHours(0, 0, 0, 0);
@@ -44,18 +54,41 @@ export class PedometerService {
     }
   }
 
-  static subscribeLiveSteps(onStepChange: (liveStepsTaken: number) => void): () => void {
+  /**
+   * Subscribes to live step updates.
+   * Calculates delta between consecutive events instead of feeding cumulative steps.
+   */
+  static subscribeLiveSteps(onStepChange: (deltaSteps: number) => void): () => void {
     try {
-      this.subscription = Pedometer.watchStepCount((result) => {
-        if (result && typeof result.steps === 'number') {
-          onStepChange(result.steps);
-        }
-      });
+      this.listeners.add(onStepChange);
+
+      if (!this.nativeSubscription) {
+        this.lastCumulativeSteps = 0;
+        this.nativeSubscription = Pedometer.watchStepCount((result) => {
+          if (result && typeof result.steps === 'number') {
+            const currentSteps = result.steps;
+            const delta = Math.max(0, currentSteps - this.lastCumulativeSteps);
+            this.lastCumulativeSteps = currentSteps;
+
+            if (delta > 0) {
+              this.listeners.forEach((listener) => {
+                try {
+                  listener(delta);
+                } catch (err) {
+                  console.warn('[PedometerService] Listener error:', err);
+                }
+              });
+            }
+          }
+        });
+      }
 
       return () => {
-        if (this.subscription) {
-          this.subscription.remove();
-          this.subscription = null;
+        this.listeners.delete(onStepChange);
+        if (this.listeners.size === 0 && this.nativeSubscription) {
+          this.nativeSubscription.remove();
+          this.nativeSubscription = null;
+          this.lastCumulativeSteps = 0;
         }
       };
     } catch {

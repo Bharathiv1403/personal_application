@@ -166,6 +166,61 @@ export class NotificationService {
   }
 
   /**
+   * Schedule gentle hydration reminder every 2 hours
+   */
+  static async scheduleHydrationReminder(): Promise<string | null> {
+    const hasPermission = await this.requestPermissions();
+    if (!hasPermission) return null;
+
+    try {
+      await Notifications.cancelScheduledNotificationAsync('hourly_hydration_nudge').catch(() => {});
+      const id = await Notifications.scheduleNotificationAsync({
+        identifier: 'hourly_hydration_nudge',
+        content: {
+          title: 'Hydration Check 💧',
+          body: 'Time for a glass of water! Stay energized and maintain peak cognitive focus.',
+          sound: true,
+          data: { type: 'hydration' },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 7200, // Every 2 hours
+          repeats: true,
+        },
+      });
+      return id;
+    } catch (e) {
+      console.warn('[NotificationService] Hydration schedule failed:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Send instant notification when daily screen limit is reached
+   */
+  static async sendScreenLimitAlert(usedMinutes: number, limitMinutes: number): Promise<string | null> {
+    const hasPermission = await this.requestPermissions();
+    if (!hasPermission) return null;
+
+    try {
+      const id = await Notifications.scheduleNotificationAsync({
+        identifier: `screen_limit_${Date.now()}`,
+        content: {
+          title: '⚠️ Screen Time Limit Reached',
+          body: `You have reached your daily limit of ${Math.round(limitMinutes / 60)}h ${limitMinutes % 60}m. Stop or continue?`,
+          sound: true,
+          data: { type: 'screen_limit_alert' },
+        },
+        trigger: null, // immediate
+      });
+      return id;
+    } catch (e) {
+      console.warn('[NotificationService] Screen limit alert failed:', e);
+      return null;
+    }
+  }
+
+  /**
    * Cancel a scheduled notification by identifier
    */
   static async cancelReminder(identifier: string): Promise<void> {

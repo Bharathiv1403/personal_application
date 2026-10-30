@@ -116,7 +116,7 @@ interface VaultState {
 export const useVaultStore = create<VaultState>()(
   persist(
     (set, get) => ({
-      entries: INITIAL_SEED_ENTRIES,
+      entries: [],
       isUnlocked: false,
       searchQuery: '',
       selectedGroup: 'all',
@@ -125,9 +125,7 @@ export const useVaultStore = create<VaultState>()(
       unlockWithPin: async (pin: string) => {
         try {
           const storedPin = await SecureStore.getItemAsync('nova_user_security_pin');
-          // If user hasn't set custom PIN yet, default PIN is '1403' or matching any set pin
-          const validPin = storedPin || '1403';
-          if (pin === validPin) {
+          if (storedPin && pin === storedPin) {
             set({ isUnlocked: true });
             return true;
           }

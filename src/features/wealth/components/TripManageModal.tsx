@@ -63,8 +63,14 @@ export const TripManageModal: React.FC<Props> = ({ visible, trip, onClose }) => 
 
   const isSolo = trip?.tripType === 'solo';
 
+  const prevVisibleRef = React.useRef(false);
+  const prevTripIdRef = React.useRef<string | null>(null);
+
   React.useEffect(() => {
-    if (visible && trip) {
+    const isOpening = visible && !prevVisibleRef.current;
+    const isTripChanged = visible && trip?.id !== prevTripIdRef.current;
+
+    if (visible && trip && (isOpening || isTripChanged)) {
       setExpenseTitle('');
       setExpenseAmount('');
       setCategory('fuel');
@@ -78,6 +84,8 @@ export const TripManageModal: React.FC<Props> = ({ visible, trip, onClose }) => 
         setContribMember(trip.members[0]);
       }
     }
+    prevVisibleRef.current = visible;
+    prevTripIdRef.current = trip?.id || null;
   }, [visible, trip]);
 
   // Keep splitAmong updated if members change

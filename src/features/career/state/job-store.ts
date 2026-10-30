@@ -15,6 +15,10 @@ export interface InterviewRoundItem {
   meetLink?: string;
   interviewer?: string;
   notes?: string;
+  rating?: number; // 1-5 stars
+  questionsAsked?: string[];
+  whatWentWell?: string;
+  whatToRevise?: string;
 }
 
 export interface JobApplicationItem {
@@ -89,6 +93,7 @@ interface JobState {
   updateJobStage: (id: string, stage: JobStage) => void;
   applyToJob: (id: string, url?: string) => Promise<void>;
   addInterviewRound: (jobId: string, round: Omit<InterviewRoundItem, 'id'>) => void;
+  updateInterviewRound: (jobId: string, roundId: string, updates: Partial<InterviewRoundItem>) => void;
   deleteJob: (id: string) => void;
   refreshLiveJobs: (query?: string) => Promise<number>;
   calculateJdMatch: (jobDescriptionText: string) => { matchScore: number; matchedSkills: string[]; missingSkills: string[] };
@@ -121,8 +126,8 @@ const INITIAL_REAL_JOBS: JobApplicationItem[] = REAL_CAREER_SEED_JOBS.slice(0, 4
 export const useJobStore = create<JobState>()(
   persist(
     (set, get) => ({
-      myResumeSkills: ['React', 'React Native', 'TypeScript', 'JavaScript', 'Next.js', 'Expo', 'Node.js', 'Zustand', 'Tailwind CSS', 'REST APIs', 'Redux'],
-      jobs: INITIAL_REAL_JOBS,
+      myResumeSkills: [],
+      jobs: [],
       isLoadingLiveJobs: false,
 
       addJob: (jobData) => {
@@ -234,6 +239,21 @@ export const useJobStore = create<JobState>()(
           jobs: state.jobs.map((j) =>
             j.id === jobId
               ? { ...j, interviews: [...j.interviews, { ...round, id: `int-${Date.now()}` }] }
+              : j
+          ),
+        }));
+      },
+
+      updateInterviewRound: (jobId, roundId, updates) => {
+        set((state) => ({
+          jobs: state.jobs.map((j) =>
+            j.id === jobId
+              ? {
+                  ...j,
+                  interviews: j.interviews.map((r) =>
+                    r.id === roundId ? { ...r, ...updates } : r
+                  ),
+                }
               : j
           ),
         }));

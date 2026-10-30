@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
+import * as DocumentPicker from 'expo-document-picker';
 import { useWealthStore, TransactionType, PaymentMethod, Transaction } from '../state/wealth-store';
 
 interface Props {
@@ -39,15 +40,23 @@ export const AddTransactionModal: React.FC<Props> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
   const [merchant, setMerchant] = useState('');
   const [description, setDescription] = useState('');
+  const [receiptName, setReceiptName] = useState<string | null>(null);
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
 
   const accounts = useWealthStore((s) => s.accounts);
   const categories = useWealthStore((s) => s.categories);
   const addTransaction = useWealthStore((s) => s.addTransaction);
   const updateTransaction = useWealthStore((s) => s.updateTransaction);
 
-  // Set default account / populate editing transaction when modal opens
+  const prevVisibleRef = React.useRef(false);
+  const prevInitialTxRef = React.useRef<Transaction | null | undefined>(undefined);
+
+  // Set default account / populate editing transaction only when modal opens or initialTransaction changes
   React.useEffect(() => {
-    if (visible) {
+    const isOpening = visible && !prevVisibleRef.current;
+    const isTxChanged = visible && initialTransaction?.id !== prevInitialTxRef.current?.id;
+
+    if (isOpening || isTxChanged) {
       if (initialTransaction) {
         setType(initialTransaction.type);
         setAmount(initialTransaction.amount.toString());
@@ -58,12 +67,16 @@ export const AddTransactionModal: React.FC<Props> = ({
         setPaymentMethod(initialTransaction.paymentMethod || 'UPI');
         setMerchant(initialTransaction.merchant || '');
         setDescription(initialTransaction.description || '');
+        setReceiptName(initialTransaction.receiptName || null);
+        setReceiptUri(initialTransaction.receiptUri || null);
       } else {
         setType(defaultType);
         setAmount('');
         setTitle('');
         setMerchant('');
         setDescription('');
+        setReceiptName(null);
+        setReceiptUri(null);
         setPaymentMethod('UPI');
         if (accounts.length > 0) {
           setSelectedAccountId(accounts[0].id);
@@ -71,7 +84,28 @@ export const AddTransactionModal: React.FC<Props> = ({
         }
       }
     }
+    prevVisibleRef.current = visible;
+    prevInitialTxRef.current = initialTransaction;
   }, [visible, initialTransaction, accounts, defaultType]);
+
+  const handlePickReceipt = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const file = res.assets[0];
+        setReceiptName(file.name);
+        setReceiptUri(file.uri);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      }
+    } catch (e) {
+      console.warn('Receipt picker error:', e);
+    }
+  };
 
   const filteredCategories = categories.filter((c) =>
     type === 'expense' ? c.type === 'expense' : c.type === 'income'
@@ -113,6 +147,8 @@ export const AddTransactionModal: React.FC<Props> = ({
           paymentMethod,
           merchant: merchant.trim() || undefined,
           description: description.trim() || undefined,
+          receiptUri: receiptUri || undefined,
+          receiptName: receiptName || undefined,
         });
       } else {
         addTransaction({
@@ -126,6 +162,8 @@ export const AddTransactionModal: React.FC<Props> = ({
           paymentMethod,
           merchant: merchant.trim() || undefined,
           description: description.trim() || undefined,
+          receiptUri: receiptUri || undefined,
+          receiptName: receiptName || undefined,
         });
       }
 
@@ -133,6 +171,8 @@ export const AddTransactionModal: React.FC<Props> = ({
       setTitle('');
       setMerchant('');
       setDescription('');
+      setReceiptName(null);
+      setReceiptUri(null);
       onClose();
     };
 
@@ -397,6 +437,34 @@ export const AddTransactionModal: React.FC<Props> = ({
               value={merchant}
               onChangeText={setMerchant}
             />
+
+            {/* Bill / Receipt Attachment */}
+            <Text style={styles.fieldLabel}>Receipt / Bill (Optional)</Text>
+            {receiptName ? (
+              <View style={styles.receiptAttachedBox}>
+                <View style={styles.receiptInfoRow}>
+                  <Ionicons name="document-attach" size={18} color={Colors.primary} />
+                  <Text style={styles.receiptNameText} numberOfLines={1}>
+                    {receiptName}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.removeReceiptBtn}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setReceiptName(null);
+                    setReceiptUri(null);
+                  }}
+                >
+                  <Ionicons name="close-circle" size={18} color={Colors.danger} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.attachReceiptBtn} onPress={handlePickReceipt}>
+                <Ionicons name="camera-outline" size={18} color={Colors.textMuted} />
+                <Text style={styles.attachReceiptText}>Attach Receipt or Bill (Image/PDF)</Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
 
           {/* Submit Button */}
@@ -614,5 +682,49 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  attachReceiptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderStyle: 'dashed',
+    borderRadius: Radii.md,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+  },
+  attachReceiptText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    fontWeight: '500',
+  },
+  receiptAttachedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderRadius: Radii.md,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  receiptInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  receiptNameText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  removeReceiptBtn: {
+    padding: 4,
   },
 });

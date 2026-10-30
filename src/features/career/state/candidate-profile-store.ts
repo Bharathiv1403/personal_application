@@ -148,74 +148,19 @@ const INITIAL_EXPERIENCES: WorkExperienceRecord[] = [];
 const INITIAL_RESUMES: ResumeItem[] = [];
 
 const INITIAL_PREFERENCES: JobPreferences = {
-  targetJobTitles: [
-    'Software Engineer',
-    'Frontend Developer',
-    'Mobile Application Engineer (React Native)',
-    'Full Stack Engineer',
-  ],
-  targetKeywords: ['React', 'React Native', 'TypeScript', 'JavaScript', 'Next.js', 'Node.js', 'Tailwind CSS'],
-  preferredLocations: ['Remote', 'Bengaluru', 'Chennai', 'Hyderabad'],
-  workModes: ['Remote', 'Hybrid'],
-  totalExperience: '2+ years',
-  minimumSalaryLPA: 12,
-  maximumSalaryLPA: 28,
+  targetJobTitles: [],
+  targetKeywords: [],
+  preferredLocations: [],
+  workModes: [],
+  totalExperience: '',
+  minimumSalaryLPA: 0,
+  maximumSalaryLPA: 0,
   skillsMatchThreshold: 75,
-  autoApplyEnabled: true,
-  dailyApplicationLimit: 15,
+  autoApplyEnabled: false,
+  dailyApplicationLimit: 10,
 };
 
-const INITIAL_ANSWER_BANK: AnswerBankItem[] = [
-  {
-    id: 'ans-1',
-    question: 'Are you legally authorized to work in India?',
-    answer: 'Yes, authorized to work anywhere in India with standard tax and employment compliance.',
-    category: 'Authorization',
-    isVerified: true,
-  },
-  {
-    id: 'ans-2',
-    question: 'Will you require visa sponsorship now or in the future?',
-    answer: 'No sponsorship required for roles based in India or remote.',
-    category: 'Authorization',
-    isVerified: true,
-  },
-  {
-    id: 'ans-3',
-    question: 'What is your current notice period?',
-    answer: '30 Days (Negotiable with early release option if required).',
-    category: 'Notice Period',
-    isVerified: true,
-  },
-  {
-    id: 'ans-4',
-    question: 'What is your expected CTC (annual compensation)?',
-    answer: 'Competitive and aligned with market standards for this role, open to discussion.',
-    category: 'Salary',
-    isVerified: true,
-  },
-  {
-    id: 'ans-5',
-    question: 'How many years of experience do you have with modern web & mobile stacks?',
-    answer: 'Over 2+ years building production applications with React, React Native, and TypeScript.',
-    category: 'Technical',
-    isVerified: true,
-  },
-  {
-    id: 'ans-6',
-    question: 'Are you open to Remote or Hybrid work arrangement?',
-    answer: 'Yes, fully comfortable working in Remote or Hybrid environments.',
-    category: 'General',
-    isVerified: true,
-  },
-  {
-    id: 'ans-7',
-    question: 'Why are you interested in this role?',
-    answer: 'Eager to leverage my engineering expertise and problem-solving skills to accelerate team goals and deliver high-impact software.',
-    category: 'General',
-    isVerified: true,
-  },
-];
+const INITIAL_ANSWER_BANK: AnswerBankItem[] = [];
 
 export const useCandidateProfileStore = create<CandidateProfileState>()(
   persist(
@@ -235,34 +180,17 @@ export const useCandidateProfileStore = create<CandidateProfileState>()(
       // Collections
       educations: INITIAL_EDUCATIONS,
       experiences: INITIAL_EXPERIENCES,
-      skillsList: [
-        { id: 'sk-1', name: 'React.js / Next.js', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
-        { id: 'sk-2', name: 'React Native / Expo', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
-        { id: 'sk-3', name: 'TypeScript', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
-        { id: 'sk-4', name: 'JavaScript', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
-        { id: 'sk-5', name: 'Node.js / REST APIs', proficiency: 'Intermediate', yearsOfExperience: '1+ yrs' },
-        { id: 'sk-6', name: 'UI / UX Design', proficiency: 'Intermediate', yearsOfExperience: '1+ yrs' },
-        { id: 'sk-7', name: 'Tailwind CSS', proficiency: 'Advanced', yearsOfExperience: '2+ yrs' },
-      ],
+      skillsList: [],
       resumes: INITIAL_RESUMES,
       preferences: INITIAL_PREFERENCES,
       answerBank: INITIAL_ANSWER_BANK,
 
       // Legacy compatibility fields
-      targetRole: 'Software Engineer',
-      yearsOfExperience: '2+ years',
-      noticePeriod: '30 Days',
-      expectedCTC: '15 - 25 LPA',
-      skills: [
-        'React.js',
-        'Next.js',
-        'TypeScript',
-        'React Native',
-        'Expo',
-        'JavaScript',
-        'Tailwind CSS',
-        'REST APIs',
-      ],
+      targetRole: '',
+      yearsOfExperience: '',
+      noticePeriod: '',
+      expectedCTC: '',
+      skills: [],
       resumeFileName: null,
       resumeUri: null,
       resumeFileSize: null,

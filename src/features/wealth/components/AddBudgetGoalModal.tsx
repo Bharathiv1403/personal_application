@@ -63,9 +63,11 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
     return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   }, []);
 
-  // Sync initial values
+  const prevVisibleRef = React.useRef(false);
+
+  // Sync initial values only on modal transition to visible
   useEffect(() => {
-    if (visible) {
+    if (visible && !prevVisibleRef.current) {
       setSalaryInput(monthlySalary > 0 ? String(monthlySalary) : '');
       setIsEditingSalary(monthlySalary <= 0);
       setExpenseTitle('');
@@ -77,7 +79,8 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
         if (!selectedSalaryAccountId) setSelectedSalaryAccountId(accounts[0].id);
       }
     }
-  }, [visible, monthlySalary, accounts]);
+    prevVisibleRef.current = visible;
+  }, [visible, monthlySalary, accounts, selectedAccountId, selectedSalaryAccountId]);
 
   // Current month's expenses
   const monthExpenses = useMemo(() => {

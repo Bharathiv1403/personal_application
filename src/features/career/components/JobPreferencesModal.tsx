@@ -35,16 +35,19 @@ export const JobPreferencesModal: React.FC<Props> = ({ visible, onClose }) => {
   const [locations, setLocations] = useState(preferences.preferredLocations.join(', '));
   const [workModes, setWorkModes] = useState<string[]>(preferences.workModes);
 
+  const prevVisibleRef = React.useRef(false);
+
   React.useEffect(() => {
-    if (visible) {
-      setMinSalary(String(preferences.minimumSalaryLPA || 18));
-      setMaxSalary(String(preferences.maximumSalaryLPA || 32));
+    if (visible && !prevVisibleRef.current) {
+      setMinSalary(preferences.minimumSalaryLPA > 0 ? String(preferences.minimumSalaryLPA) : '');
+      setMaxSalary(preferences.maximumSalaryLPA > 0 ? String(preferences.maximumSalaryLPA) : '');
       setThreshold(preferences.skillsMatchThreshold || 75);
       setAutoApply(preferences.autoApplyEnabled);
-      setDailyLimit(String(preferences.dailyApplicationLimit || 15));
-      setLocations(preferences.preferredLocations.join(', '));
-      setWorkModes(preferences.workModes);
+      setDailyLimit(preferences.dailyApplicationLimit > 0 ? String(preferences.dailyApplicationLimit) : '');
+      setLocations(preferences.preferredLocations ? preferences.preferredLocations.join(', ') : '');
+      setWorkModes(preferences.workModes || []);
     }
+    prevVisibleRef.current = visible;
   }, [visible, preferences]);
 
   const toggleWorkMode = (mode: 'Remote' | 'Hybrid' | 'On-site') => {

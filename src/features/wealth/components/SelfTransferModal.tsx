@@ -33,8 +33,10 @@ export const SelfTransferModal: React.FC<Props> = ({ visible, onClose }) => {
   const addTransaction = useWealthStore((s) => s.addTransaction);
   const addAccount = useWealthStore((s) => s.addAccount);
 
+  const prevVisibleRef = React.useRef(false);
+
   React.useEffect(() => {
-    if (visible && accounts.length > 0) {
+    if (visible && !prevVisibleRef.current && accounts.length > 0) {
       setAmount('');
       // Default from account to first bank account
       const bankAcc = accounts.find((a) => a.type === 'bank') || accounts[0];
@@ -48,6 +50,7 @@ export const SelfTransferModal: React.FC<Props> = ({ visible, onClose }) => {
         setToAccountId(accounts[1].id);
       }
     }
+    prevVisibleRef.current = visible;
   }, [visible, accounts]);
 
   const handleSave = () => {

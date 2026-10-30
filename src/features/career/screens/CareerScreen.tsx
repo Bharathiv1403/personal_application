@@ -32,6 +32,8 @@ import { InterviewCoachModal } from '../components/InterviewCoachModal';
 import { JobDetailModal } from '../components/JobDetailModal';
 import { OutreachGeneratorModal, OutreachType } from '../components/OutreachGeneratorModal';
 import { OfferNegotiatorModal } from '../components/OfferNegotiatorModal';
+import { PreInterviewFlashcardsModal } from '../components/PreInterviewFlashcardsModal';
+import { InterviewRetrospectiveModal } from '../components/InterviewRetrospectiveModal';
 import { useAiConfigStore } from '@/core/state/ai-config-store';
 import { AIService } from '@/core/utils/ai-service';
 import { ApiKeyModal } from '@/core/components/ApiKeyModal';
@@ -80,6 +82,9 @@ export const CareerScreen: React.FC = () => {
   const [selectedJobForOutreach, setSelectedJobForOutreach] = useState<JobApplicationItem | null>(null);
   const [outreachDefaultType, setOutreachDefaultType] = useState<OutreachType>('referral_request');
   const [offerNegotiatorVisible, setOfferNegotiatorVisible] = useState(false);
+  const [flashcardsVisible, setFlashcardsVisible] = useState(false);
+  const [retroModalVisible, setRetroModalVisible] = useState(false);
+  const [selectedJobForRetro, setSelectedJobForRetro] = useState<JobApplicationItem | null>(null);
 
   // Stores
   const jobs = useJobStore((s) => s.jobs);
@@ -342,6 +347,31 @@ export const CareerScreen: React.FC = () => {
           >
             <Ionicons name="add-circle" size={15} color="#10B981" />
             <Text style={styles.toolChipText}>+ Add Application</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.toolChip}
+            activeOpacity={0.8}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setFlashcardsVisible(true);
+            }}
+          >
+            <Ionicons name="flash" size={15} color="#F59E0B" />
+            <Text style={styles.toolChipText}>⚡ 10m Flashcards</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.toolChip}
+            activeOpacity={0.8}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setSelectedJobForRetro(jobs.find((j) => j.stage === 'interview') || jobs[0] || null);
+              setRetroModalVisible(true);
+            }}
+          >
+            <Ionicons name="sparkles" size={15} color="#06B6D4" />
+            <Text style={styles.toolChipText}>🎯 Interview Retro</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -857,6 +887,18 @@ export const CareerScreen: React.FC = () => {
       <OfferNegotiatorModal
         visible={offerNegotiatorVisible}
         onClose={() => setOfferNegotiatorVisible(false)}
+      />
+      <PreInterviewFlashcardsModal
+        visible={flashcardsVisible}
+        onClose={() => setFlashcardsVisible(false)}
+      />
+      <InterviewRetrospectiveModal
+        visible={retroModalVisible}
+        job={selectedJobForRetro}
+        onClose={() => {
+          setRetroModalVisible(false);
+          setSelectedJobForRetro(null);
+        }}
       />
       <ApiKeyModal
         visible={apiKeyModalVisible}

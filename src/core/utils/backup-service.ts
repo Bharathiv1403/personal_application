@@ -15,6 +15,8 @@ export interface BackupPayload {
   todos?: string | null;
   vault?: string | null;
   aiProvider?: string | null;
+  notes?: string | null;
+  habits?: string | null;
 }
 
 const STORAGE_KEYS = {
@@ -29,6 +31,8 @@ const STORAGE_KEYS = {
   todos: 'personal-app:todo-store-v1',
   vault: '@nova:keepass_vault',
   aiProvider: '@aayon:ai_preferred_provider',
+  notes: 'second-brain-notes-storage',
+  habits: 'personal-app:habit-store-v1',
 };
 
 export class BackupService {
@@ -53,6 +57,8 @@ export class BackupService {
       todos,
       vault,
       aiProvider,
+      notes,
+      habits,
     ] = await Promise.all([
       AsyncStorage.getItem(STORAGE_KEYS.profile),
       AsyncStorage.getItem(STORAGE_KEYS.biometrics),
@@ -64,6 +70,8 @@ export class BackupService {
       AsyncStorage.getItem(STORAGE_KEYS.todos),
       AsyncStorage.getItem(STORAGE_KEYS.vault),
       AsyncStorage.getItem(STORAGE_KEYS.aiProvider),
+      AsyncStorage.getItem(STORAGE_KEYS.notes),
+      AsyncStorage.getItem(STORAGE_KEYS.habits),
     ]);
 
     const payload: BackupPayload = {
@@ -80,6 +88,8 @@ export class BackupService {
       todos,
       vault,
       aiProvider,
+      notes,
+      habits,
     };
 
     return JSON.stringify(payload, null, 2);
@@ -140,6 +150,8 @@ export class BackupService {
       if (payload.todos) writes.push([STORAGE_KEYS.todos, payload.todos]);
       if (payload.vault) writes.push([STORAGE_KEYS.vault, payload.vault]);
       if (payload.aiProvider) writes.push([STORAGE_KEYS.aiProvider, payload.aiProvider]);
+      if (payload.notes) writes.push([STORAGE_KEYS.notes, payload.notes]);
+      if (payload.habits) writes.push([STORAGE_KEYS.habits, payload.habits]);
 
       await AsyncStorage.multiSet(writes);
 
@@ -173,6 +185,18 @@ export class BackupService {
         useVaultStore.persist?.rehydrate?.();
       } catch (e) {
         console.warn('[BackupService] Vault store rehydrate note:', e);
+      }
+      try {
+        const { useNoteStore } = require('../../features/notes/state/note-store');
+        useNoteStore.persist?.rehydrate?.();
+      } catch (e) {
+        console.warn('[BackupService] Note store rehydrate note:', e);
+      }
+      try {
+        const { useHabitStore } = require('../../features/today/state/habit-store');
+        useHabitStore.persist?.rehydrate?.();
+      } catch (e) {
+        console.warn('[BackupService] Habit store rehydrate note:', e);
       }
 
       return true;

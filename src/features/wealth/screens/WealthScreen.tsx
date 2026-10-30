@@ -45,6 +45,9 @@ import { PartialPaymentModal } from '../components/PartialPaymentModal';
 import { SelfTransferModal } from '../components/SelfTransferModal';
 import { RestoreBackupModal } from '../components/RestoreBackupModal';
 import { SipCalculatorModal } from '../components/SipCalculatorModal';
+import { GroceryListModal } from '../components/GroceryListModal';
+import { AddAssetModal } from '../components/AddAssetModal';
+import { MetalPriceService } from '@/core/utils/metal-price-service';
 import { PeerDebt, PeerDebtType, Trip } from '../state/wealth-store';
 
 type NavTab =
@@ -81,6 +84,9 @@ export const WealthScreen: React.FC = () => {
   const [selfTransferModalVisible, setSelfTransferModalVisible] = useState(false);
   const [restoreBackupModalVisible, setRestoreBackupModalVisible] = useState(false);
   const [sipCalculatorModalVisible, setSipCalculatorModalVisible] = useState(false);
+  const [groceryModalVisible, setGroceryModalVisible] = useState(false);
+  const [addAssetModalVisible, setAddAssetModalVisible] = useState(false);
+  const [assetModalDefaultTab, setAssetModalDefaultTab] = useState<'silver' | 'fd' | 'chit'>('silver');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -98,6 +104,10 @@ export const WealthScreen: React.FC = () => {
   const savingsGoals = useWealthStore((s) => s.savingsGoals);
   const loans = useWealthStore((s) => s.loans);
   const goldItems = useWealthStore((s) => s.goldItems);
+  const silverGrams = useWealthStore((s) => s.silverGrams);
+  const silverRatePerGram = useWealthStore((s) => s.silverRatePerGram);
+  const fixedDeposits = useWealthStore((s) => s.fixedDeposits);
+  const chitFunds = useWealthStore((s) => s.chitFunds);
   const trips = useWealthStore((s) => s.trips);
   const peerDebts = useWealthStore((s) => s.peerDebts);
   const currentGoldRate = useWealthStore((s) => s.currentGoldRatePerGram);
@@ -109,6 +119,33 @@ export const WealthScreen: React.FC = () => {
   const payMonthlyVatti = useWealthStore((s) => s.payMonthlyVatti);
   const deleteLoan = useWealthStore((s) => s.deleteLoan);
   const deleteGoldItem = useWealthStore((s) => s.deleteGoldItem);
+  const setGoldRate = useWealthStore((s) => s.setGoldRate);
+  const setSilverRate = useWealthStore((s) => s.setSilverRate);
+  const incrementChitPaidMonth = useWealthStore((s) => s.incrementChitPaidMonth);
+  const deleteFixedDeposit = useWealthStore((s) => s.deleteFixedDeposit);
+  const deleteChitFund = useWealthStore((s) => s.deleteChitFund);
+  const [isSyncingGold, setIsSyncingGold] = useState(false);
+
+  const handleSyncGoldRate = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      setIsSyncingGold(true);
+      const data = await MetalPriceService.getLiveMetalPrices(true);
+      setGoldRate(data.gold22kPerGram);
+      if (data.silverPerGram) {
+        setSilverRate(data.silverPerGram);
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Alert.alert(
+        '⚡ Live Market Rate Synced',
+        `• 22K (916 BIS): ₹${data.gold22kPerGram.toLocaleString('en-IN')}/g (₹${data.gold22kPerSovereign.toLocaleString('en-IN')}/Sovereign)\n• 24K Pure: ₹${data.gold24kPerGram.toLocaleString('en-IN')}/g\n• Silver: ₹${data.silverPerGram}/g\n• Source: ${data.source}`
+      );
+    } catch {
+      Alert.alert('Sync Note', 'Could not refresh live rate from exchange.');
+    } finally {
+      setIsSyncingGold(false);
+    }
+  };
   const depositToGoal = useWealthStore((s) => s.depositToGoal);
   const withdrawFromGoal = useWealthStore((s) => s.withdrawFromGoal);
   const deleteGoal = useWealthStore((s) => s.deleteGoal);
@@ -199,6 +236,10 @@ export const WealthScreen: React.FC = () => {
   const totalGoldSovereigns = Number((totalGoldGrams / 8).toFixed(2));
   const totalGoldNetWorth = Math.round(totalGoldGrams * currentGoldRate);
 
+  const totalSilverNetWorth = Math.round(silverGrams * (silverRatePerGram || 102));
+  const totalFdNetWorth = fixedDeposits.reduce((acc, fd) => acc + fd.principal, 0);
+  const totalChitPaidNetWorth = chitFunds.reduce((acc, c) => acc + (c.monthlyInstallment * c.paidMonths), 0);
+
   const totalOutstandingLoanPrincipal = loans
     .filter((l) => l.status === 'active')
     .reduce((acc, l) => acc + l.principalAmount, 0);
@@ -208,7 +249,13 @@ export const WealthScreen: React.FC = () => {
     .reduce((acc, l) => acc + l.monthlyInterestAmount, 0);
 
   const netWorth =
-    liquidCashBalance + totalGoldNetWorth - creditCardOutstanding - totalOutstandingLoanPrincipal;
+    liquidCashBalance +
+    totalGoldNetWorth +
+    totalSilverNetWorth +
+    totalFdNetWorth +
+    totalChitPaidNetWorth -
+    creditCardOutstanding -
+    totalOutstandingLoanPrincipal;
 
   const totalIncome = filteredTransactions
     .filter((t) => t.type === 'income')
@@ -798,6 +845,20 @@ export const WealthScreen: React.FC = () => {
               <Ionicons name="card" size={13} color="#C084FC" />
             </View>
             <Text style={styles.quickActionLabel}>Account</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setGroceryModalVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.quickActionIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.18)' }]}>
+              <Ionicons name="cart" size={13} color="#F59E0B" />
+            </View>
+            <Text style={styles.quickActionLabel}>Groceries</Text>
           </TouchableOpacity>
         </View>
 
@@ -2082,6 +2143,17 @@ export const WealthScreen: React.FC = () => {
               </View>
               <View style={styles.sectionHeaderActionsWrap}>
                 <TouchableOpacity
+                  style={[styles.smallAddBtn, { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: Colors.gold }]}
+                  onPress={handleSyncGoldRate}
+                  disabled={isSyncingGold}
+                >
+                  <Ionicons name="refresh" size={13} color={Colors.gold} />
+                  <Text style={[styles.smallAddBtnText, { color: Colors.gold }]}>
+                    {isSyncingGold ? 'Syncing...' : 'Live Rate'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                   style={styles.smallAddBtn}
                   onPress={() => setAddGoldModalVisible(true)}
                 >
@@ -2111,6 +2183,188 @@ export const WealthScreen: React.FC = () => {
                   </Text>
                 </View>
               ))
+            )}
+
+            {/* Physical Silver Portfolio Section */}
+            <View style={[styles.sectionHeaderRow, { marginTop: Spacing.xl }]}>
+              <View style={styles.sectionHeaderTitleWrap}>
+                <Text style={styles.sectionTitle}>Physical Silver Portfolio</Text>
+                <Text style={styles.sectionSubtitle}>
+                  {silverGrams}g • Rate: ₹{silverRatePerGram || 102}/g • Valuation: {money(totalSilverNetWorth)}
+                </Text>
+              </View>
+              <View style={styles.sectionHeaderActionsWrap}>
+                <TouchableOpacity
+                  style={[styles.smallAddBtn, { backgroundColor: 'rgba(6, 182, 212, 0.15)', borderColor: Colors.cyan }]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setAssetModalDefaultTab('silver');
+                    setAddAssetModalVisible(true);
+                  }}
+                >
+                  <Ionicons name="sparkles" size={13} color={Colors.cyan} />
+                  <Text style={[styles.smallAddBtnText, { color: Colors.cyan }]}>
+                    {silverGrams > 0 ? 'Edit Silver' : '+ Silver'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {silverGrams === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="sparkles-outline" size={32} color={Colors.cyan} />
+                <Text style={styles.emptyTitle}>No Silver Assets Added</Text>
+                <Text style={styles.emptySubtitle}>Track silver bars, coins & pooja vessels with live rates.</Text>
+              </View>
+            ) : (
+              <View style={styles.goldCard}>
+                <View>
+                  <Text style={styles.goldName}>Silver Vault Holdings</Text>
+                  <Text style={styles.goldMeta}>
+                    {silverGrams}g Fine Silver • ₹{silverRatePerGram || 102}/g
+                  </Text>
+                </View>
+                <Text style={[styles.goldWorth, { color: Colors.cyan }]}>
+                  {money(totalSilverNetWorth)}
+                </Text>
+              </View>
+            )}
+
+            {/* Bank Fixed Deposits (FD) Section */}
+            <View style={[styles.sectionHeaderRow, { marginTop: Spacing.xl }]}>
+              <View style={styles.sectionHeaderTitleWrap}>
+                <Text style={styles.sectionTitle}>Bank Fixed Deposits (FD)</Text>
+                <Text style={styles.sectionSubtitle}>
+                  {fixedDeposits.length} Active FDs • Total Principal: {money(totalFdNetWorth)}
+                </Text>
+              </View>
+              <View style={styles.sectionHeaderActionsWrap}>
+                <TouchableOpacity
+                  style={[styles.smallAddBtn, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: Colors.primary }]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setAssetModalDefaultTab('fd');
+                    setAddAssetModalVisible(true);
+                  }}
+                >
+                  <Ionicons name="shield-checkmark" size={13} color={Colors.primary} />
+                  <Text style={[styles.smallAddBtnText, { color: Colors.primary }]}>+ FD</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {fixedDeposits.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="lock-closed-outline" size={32} color={Colors.primary} />
+                <Text style={styles.emptyTitle}>No Fixed Deposits Active</Text>
+                <Text style={styles.emptySubtitle}>Track bank term deposits, interest yield and maturity.</Text>
+              </View>
+            ) : (
+              fixedDeposits.map((fd) => (
+                <View key={fd.id} style={styles.goldCard}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.goldName}>{fd.bankName}</Text>
+                      <Badge label={`${fd.interestRatePercent}% p.a.`} variant="primary" />
+                    </View>
+                    <Text style={styles.goldMeta}>
+                      Principal: {money(fd.principal)} • Matures: {fd.maturityDate} ({fd.tenureMonths}m)
+                    </Text>
+                    <Text style={[styles.goldMeta, { color: Colors.primary, marginTop: 2 }]}>
+                      Payout at Maturity: {money(fd.maturityAmount)}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.delActionBtn}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      Alert.alert('Delete FD', `Remove ${fd.bankName} FD record?`, [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Delete', style: 'destructive', onPress: () => deleteFixedDeposit(fd.id) },
+                      ]);
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={16} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+
+            {/* Chit Funds (Chitty) Section */}
+            <View style={[styles.sectionHeaderRow, { marginTop: Spacing.xl }]}>
+              <View style={styles.sectionHeaderTitleWrap}>
+                <Text style={styles.sectionTitle}>Chit Funds (Chitty)</Text>
+                <Text style={styles.sectionSubtitle}>
+                  {chitFunds.length} Chits • Capital Paid: {money(totalChitPaidNetWorth)}
+                </Text>
+              </View>
+              <View style={styles.sectionHeaderActionsWrap}>
+                <TouchableOpacity
+                  style={[styles.smallAddBtn, { backgroundColor: 'rgba(139, 92, 246, 0.15)', borderColor: Colors.purple }]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setAssetModalDefaultTab('chit');
+                    setAddAssetModalVisible(true);
+                  }}
+                >
+                  <Ionicons name="add-circle-outline" size={13} color={Colors.purple} />
+                  <Text style={[styles.smallAddBtnText, { color: Colors.purple }]}>+ Chit</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {chitFunds.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="people-circle-outline" size={32} color={Colors.purple} />
+                <Text style={styles.emptyTitle}>No Chit Funds Enrolled</Text>
+                <Text style={styles.emptySubtitle}>Track monthly chits, paid installments and dividend yields.</Text>
+              </View>
+            ) : (
+              chitFunds.map((c) => {
+                const isComplete = c.paidMonths >= c.totalMonths;
+                return (
+                  <View key={c.id} style={styles.goldCard}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.goldName}>{c.chitName}</Text>
+                        <Badge label={isComplete ? 'Completed 🎉' : `${c.paidMonths}/${c.totalMonths} Paid`} variant={isComplete ? 'primary' : 'purple'} />
+                      </View>
+                      <Text style={styles.goldMeta}>
+                        Value: {money(c.totalAmount)} • Monthly: {money(c.monthlyInstallment)}
+                      </Text>
+                      <Text style={[styles.goldMeta, { color: Colors.gold, marginTop: 2 }]}>
+                        Paid: {money(c.monthlyInstallment * c.paidMonths)} • Dividend Saved: {money(c.dividendEarned)}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      {!isComplete && (
+                        <TouchableOpacity
+                          style={[styles.smallAddBtn, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: Colors.primary }]}
+                          onPress={() => {
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                            incrementChitPaidMonth(c.id);
+                          }}
+                        >
+                          <Ionicons name="checkmark-circle-outline" size={13} color={Colors.primary} />
+                          <Text style={[styles.smallAddBtnText, { color: Colors.primary }]}>+1 Month</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={styles.delActionBtn}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                          Alert.alert('Delete Chit', `Remove ${c.chitName}?`, [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Delete', style: 'destructive', onPress: () => deleteChitFund(c.id) },
+                          ]);
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={16} color={Colors.textMuted} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })
             )}
           </View>
         )}
@@ -2194,6 +2448,15 @@ export const WealthScreen: React.FC = () => {
       <SipCalculatorModal
         visible={sipCalculatorModalVisible}
         onClose={() => setSipCalculatorModalVisible(false)}
+      />
+      <GroceryListModal
+        visible={groceryModalVisible}
+        onClose={() => setGroceryModalVisible(false)}
+      />
+      <AddAssetModal
+        visible={addAssetModalVisible}
+        onClose={() => setAddAssetModalVisible(false)}
+        initialTab={assetModalDefaultTab}
       />
     </ScreenContainer>
   );
@@ -3579,5 +3842,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#A78BFA',
+  },
+  delActionBtn: {
+    padding: 6,
+    borderRadius: Radii.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
