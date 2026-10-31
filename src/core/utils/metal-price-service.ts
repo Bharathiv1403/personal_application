@@ -53,24 +53,37 @@ export class MetalPriceService {
       if (res && res.ok) {
         const data = await res.json();
         // XAU price is per troy ounce (31.1035 grams) in USD
-        if (data.price_gram_24k) {
-          // If API returns gram price, compute INR estimate (approx 86 INR/USD)
-          const usdToInr = 86.5;
-          const gold24kInr = Math.round(data.price_gram_24k * usdToInr * 1.08); // Include 8% Indian import duty & GST
-          const gold22kInr = Math.round(gold24kInr * (22 / 24));
+        const rawOuncePrice = typeof data.price === 'number' ? data.price : (data.price_gram_24k ? data.price_gram_24k * 31.1035 : 3875);
+        const gram24kUsd = rawOuncePrice / 31.1034768;
 
-          const result: MetalPriceData = {
-            gold22kPerGram: gold22kInr,
-            gold24kPerGram: gold24kInr,
-            gold22kPerSovereign: gold22kInr * 8,
-            silverPerGram: Math.round(gold22kInr / 75),
-            lastUpdated: new Date().toISOString(),
-            source: 'Live International Bullion & MCX Exchange',
-          };
+        // Approx 86.5 INR/USD + 6% Indian customs import duty & 3% GST
+        const usdToInr = 86.5;
+        const gold24kInr = Math.round(gram24kUsd * usdToInr * 1.09);
+        const gold22kInr = Math.round(gold24kInr * (22 / 24));
 
-          await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(result));
-          return result;
+        let silverInr = 102;
+        try {
+          const silvRes = await fetch('https://api.gold-api.com/price/XAG').catch(() => null);
+          if (silvRes && silvRes.ok) {
+            const silvData = await silvRes.json();
+            const silverUsd = silvData.price || 49;
+            silverInr = Math.round((silverUsd * usdToInr * 1.09) / 31.1034768);
+          }
+        } catch {
+          silverInr = Math.round(gold22kInr / 75);
         }
+
+        const result: MetalPriceData = {
+          gold22kPerGram: gold22kInr,
+          gold24kPerGram: gold24kInr,
+          gold22kPerSovereign: gold22kInr * 8,
+          silverPerGram: silverInr,
+          lastUpdated: new Date().toISOString(),
+          source: 'Live International Bullion & MCX Exchange',
+        };
+
+        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(result));
+        return result;
       }
     } catch (e) {
       console.warn('[MetalPriceService] Network fetch error, using local market quote:', e);

@@ -143,6 +143,19 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
   };
 
+  const handleTitleChange = (text: string) => {
+    setExpenseTitle(text);
+    // Smart auto-parse: e.g. "Petrol 250" or "Dinner 400"
+    if (!expenseAmount) {
+      const match = text.match(/^(.+?)\s+(\d+(?:\.\d{1,2})?)$/);
+      if (match) {
+        setExpenseTitle(match[1].trim());
+        setExpenseAmount(match[2]);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }
+    }
+  };
+
   const handleAddExpense = () => {
     const numAmount = parseFloat(expenseAmount.trim());
     if (isNaN(numAmount) || numAmount <= 0) {
@@ -419,7 +432,7 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
                     placeholder="e.g. Vegetables, Petrol, Tea, Rent"
                     placeholderTextColor={Colors.textMuted}
                     value={expenseTitle}
-                    onChangeText={setExpenseTitle}
+                    onChangeText={handleTitleChange}
                   />
 
                   {/* Expense Amount */}
