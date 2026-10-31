@@ -31,6 +31,8 @@ import { TermsPrivacyModal } from '@/features/auth/components/TermsPrivacyModal'
 import { BackupService } from '@/core/utils/backup-service';
 import { useVaultStore } from '@/features/vault/state/vault-store';
 import { KeePassVaultModal } from '@/features/vault/components/KeePassVaultModal';
+import { UpdateCheckerService, AppReleaseInfo } from '@/core/services/update-checker';
+import { AppUpdateModal } from '@/core/components/AppUpdateModal';
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -67,6 +69,35 @@ export const SettingsScreen: React.FC = () => {
   // Restore Modal
   const [restoreModalVisible, setRestoreModalVisible] = useState(false);
   const [restoreJson, setRestoreJson] = useState('');
+
+  // Updates Modal
+  const [updateModalVisible, setUpdateModalVisible] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<AppReleaseInfo | null>(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+
+  const handleCheckForUpdates = async () => {
+    setIsCheckingUpdate(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      const info = await UpdateCheckerService.checkForUpdates();
+      setIsCheckingUpdate(false);
+      if (info.hasUpdate) {
+        setUpdateInfo(info);
+        setUpdateModalVisible(true);
+      } else {
+        Alert.alert(
+          'Up to Date! ✅',
+          `You are using the latest version of AAYON (v${info.currentVersion}).`
+        );
+      }
+    } catch {
+      setIsCheckingUpdate(false);
+      Alert.alert(
+        'Update Check Failed',
+        'Could not reach GitHub Releases. Please check your internet connection.'
+      );
+    }
+  };
 
   const handleToggleBiometrics = async (val: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -459,8 +490,26 @@ export const SettingsScreen: React.FC = () => {
         <GlassCard style={styles.sectionCard}>
           <View style={styles.settingRow}>
             <Text style={styles.settingLabel}>App Version</Text>
-            <Text style={styles.settingValue}>AAYON v1.1.0 (Build 2)</Text>
+            <Text style={styles.settingValue}>AAYON v1.1.0</Text>
           </View>
+          <View style={styles.divider} />
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={handleCheckForUpdates}
+            disabled={isCheckingUpdate}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingLabel}>Check for APK Updates</Text>
+              <Text style={styles.settingSub}>
+                {isCheckingUpdate ? 'Checking GitHub Releases...' : 'Detect new tagged builds & download APK'}
+              </Text>
+            </View>
+            <Ionicons
+              name={isCheckingUpdate ? 'sync-outline' : 'cloud-download-outline'}
+              size={18}
+              color={Colors.cyan}
+            />
+          </TouchableOpacity>
           <View style={styles.divider} />
           <View style={styles.settingRow}>
             <Text style={styles.settingLabel}>Storage Model</Text>
@@ -694,6 +743,13 @@ export const SettingsScreen: React.FC = () => {
       <KeePassVaultModal
         visible={vaultModalVisible}
         onClose={() => setVaultModalVisible(false)}
+      />
+
+      {/* GitHub Releases App Update Modal */}
+      <AppUpdateModal
+        visible={updateModalVisible}
+        releaseInfo={updateInfo}
+        onClose={() => setUpdateModalVisible(false)}
       />
     </ScreenContainer>
   );

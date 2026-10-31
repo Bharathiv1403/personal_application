@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet, AppState, AppStateStatus } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -17,6 +17,8 @@ import { ScreenTimeTracker } from '@/core/services/screen-time-tracker';
 import { StepTracker } from '@/core/services/step-tracker';
 import { ScreenTimeLimitModal } from '@/features/health/components/ScreenTimeLimitModal';
 import { useHealthStore } from '@/features/health/state/health-store';
+import { UpdateCheckerService, AppReleaseInfo } from '@/core/services/update-checker';
+import { AppUpdateModal } from '@/core/components/AppUpdateModal';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -44,11 +46,22 @@ export const RootNavigator: React.FC = () => {
   const isScreenLimitModalVisible = useHealthStore((s) => s.isScreenLimitModalVisible);
   const backgroundTimeRef = useRef<number | null>(null);
 
+  const [autoUpdateInfo, setAutoUpdateInfo] = useState<AppReleaseInfo | null>(null);
+  const [autoUpdateModalVisible, setAutoUpdateModalVisible] = useState(false);
+
   useEffect(() => {
     initializeAuth();
     initializeAiConfig();
     ScreenTimeTracker.init();
     StepTracker.init();
+
+    // Check for new tagged APK releases on launch
+    UpdateCheckerService.checkForUpdates().then((info) => {
+      if (info.hasUpdate) {
+        setAutoUpdateInfo(info);
+        setAutoUpdateModalVisible(true);
+      }
+    });
 
     NotificationService.requestPermissions().then((granted) => {
       if (granted) {
@@ -131,6 +144,11 @@ export const RootNavigator: React.FC = () => {
       )}
 
       <ScreenTimeLimitModal visible={isScreenLimitModalVisible} />
+      <AppUpdateModal
+        visible={autoUpdateModalVisible}
+        releaseInfo={autoUpdateInfo}
+        onClose={() => setAutoUpdateModalVisible(false)}
+      />
     </>
   );
 };
