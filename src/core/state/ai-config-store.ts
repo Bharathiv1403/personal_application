@@ -4,12 +4,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SECURE_GEMINI_KEY = 'aayon_sec_gemini_key';
 const SECURE_GROQ_KEY = 'aayon_sec_groq_key';
+const SECURE_OPENROUTER_KEY = 'aayon_sec_openrouter_key';
 const PREFERRED_PROVIDER_KEY = '@aayon:ai_preferred_provider';
 
 export interface AiConfigState {
   geminiKey: string;
   groqKey: string;
-  preferredProvider: 'gemini' | 'groq' | 'auto';
+  openrouterKey: string;
+  preferredProvider: 'gemini' | 'groq' | 'openrouter' | 'auto';
   isInitialized: boolean;
   isConfigured: boolean;
 
@@ -17,14 +19,16 @@ export interface AiConfigState {
   initialize: () => Promise<void>;
   saveGeminiKey: (key: string) => Promise<boolean>;
   saveGroqKey: (key: string) => Promise<boolean>;
-  removeKey: (provider: 'gemini' | 'groq') => Promise<void>;
-  setPreferredProvider: (provider: 'gemini' | 'groq' | 'auto') => Promise<void>;
-  testApiKey: (provider: 'gemini' | 'groq', key: string) => Promise<{ success: boolean; message: string }>;
+  saveOpenRouterKey: (key: string) => Promise<boolean>;
+  removeKey: (provider: 'gemini' | 'groq' | 'openrouter') => Promise<void>;
+  setPreferredProvider: (provider: 'gemini' | 'groq' | 'openrouter' | 'auto') => Promise<void>;
+  testApiKey: (provider: 'gemini' | 'groq' | 'openrouter', key: string) => Promise<{ success: boolean; message: string }>;
 }
 
 export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   geminiKey: '',
   groqKey: '',
+  openrouterKey: '',
   preferredProvider: 'auto',
   isInitialized: false,
   isConfigured: false,
@@ -33,30 +37,36 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     try {
       let storedGemini = '';
       let storedGroq = '';
+      let storedOpenRouter = '';
 
       try {
         storedGemini = (await SecureStore.getItemAsync(SECURE_GEMINI_KEY)) || '';
         storedGroq = (await SecureStore.getItemAsync(SECURE_GROQ_KEY)) || '';
+        storedOpenRouter = (await SecureStore.getItemAsync(SECURE_OPENROUTER_KEY)) || '';
       } catch {
         // Fallback to AsyncStorage on environments without hardware secure enclave
         storedGemini = (await AsyncStorage.getItem(SECURE_GEMINI_KEY)) || '';
         storedGroq = (await AsyncStorage.getItem(SECURE_GROQ_KEY)) || '';
+        storedOpenRouter = (await AsyncStorage.getItem(SECURE_OPENROUTER_KEY)) || '';
       }
 
-      const storedPref = (await AsyncStorage.getItem(PREFERRED_PROVIDER_KEY)) as 'gemini' | 'groq' | 'auto' | null;
+      const storedPref = (await AsyncStorage.getItem(PREFERRED_PROVIDER_KEY)) as 'gemini' | 'groq' | 'openrouter' | 'auto' | null;
 
       // Also consider environment fallback if developer key exists
       const effectiveGemini = storedGemini || process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
       const effectiveGroq = storedGroq || process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
+      const effectiveOpenRouter = storedOpenRouter || process.env.EXPO_PUBLIC_OPENROUTER_API_KEY || '';
 
       const isConfigured = Boolean(
         (effectiveGemini && !effectiveGemini.includes('your_')) ||
-        (effectiveGroq && !effectiveGroq.includes('your_'))
+        (effectiveGroq && !effectiveGroq.includes('your_')) ||
+        (effectiveOpenRouter && !effectiveOpenRouter.includes('your_'))
       );
 
       set({
         geminiKey: storedGemini,
         groqKey: storedGroq,
+        openrouterKey: storedOpenRouter,
         preferredProvider: storedPref || 'auto',
         isInitialized: true,
         isConfigured,
@@ -111,7 +121,29 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     }
   },
 
-  removeKey: async (provider: 'gemini' | 'groq') => {
+  saveOpenRouterKey: async (rawKey: string) => {
+    const key = rawKey.trim();
+    if (!key) return false;
+
+    try {
+      try {
+        await SecureStore.setItemAsync(SECURE_OPENROUTER_KEY, key);
+      } catch {
+        await AsyncStorage.setItem(SECURE_OPENROUTER_KEY, key);
+      }
+
+      set((state) => ({
+        openrouterKey: key,
+        isConfigured: true,
+      }));
+      return true;
+    } catch (err) {
+      console.error('[AiConfigStore] Failed to save OpenRouter key:', err);
+      return false;
+    }
+  },
+
+  removeKey: async (provider: 'gemini' | 'groq' | 'openrouter') => {
     try {
       if (provider === 'gemini') {
         try {
@@ -120,18 +152,28 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
           await AsyncStorage.removeItem(SECURE_GEMINI_KEY);
         }
         set((state) => {
-          const hasGroq = Boolean(state.groqKey || process.env.EXPO_PUBLIC_GROQ_API_KEY);
-          return { geminiKey: '', isConfigured: hasGroq };
+          const hasOther = Boolean(state.groqKey || state.openrouterKey || process.env.EXPO_PUBLIC_GROQ_API_KEY);
+          return { geminiKey: '', isConfigured: hasOther };
         });
-      } else {
+      } else if (provider === 'groq') {
         try {
           await SecureStore.deleteItemAsync(SECURE_GROQ_KEY);
         } catch {
           await AsyncStorage.removeItem(SECURE_GROQ_KEY);
         }
         set((state) => {
-          const hasGemini = Boolean(state.geminiKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY);
-          return { groqKey: '', isConfigured: hasGemini };
+          const hasOther = Boolean(state.geminiKey || state.openrouterKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY);
+          return { groqKey: '', isConfigured: hasOther };
+        });
+      } else {
+        try {
+          await SecureStore.deleteItemAsync(SECURE_OPENROUTER_KEY);
+        } catch {
+          await AsyncStorage.removeItem(SECURE_OPENROUTER_KEY);
+        }
+        set((state) => {
+          const hasOther = Boolean(state.geminiKey || state.groqKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY || process.env.EXPO_PUBLIC_GROQ_API_KEY);
+          return { openrouterKey: '', isConfigured: hasOther };
         });
       }
     } catch (err) {
@@ -139,12 +181,12 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     }
   },
 
-  setPreferredProvider: async (provider: 'gemini' | 'groq' | 'auto') => {
+  setPreferredProvider: async (provider: 'gemini' | 'groq' | 'openrouter' | 'auto') => {
     await AsyncStorage.setItem(PREFERRED_PROVIDER_KEY, provider);
     set({ preferredProvider: provider });
   },
 
-  testApiKey: async (provider: 'gemini' | 'groq', rawKey: string) => {
+  testApiKey: async (provider: 'gemini' | 'groq' | 'openrouter', rawKey: string) => {
     const key = rawKey.trim();
     if (!key) {
       return { success: false, message: 'Please paste or enter an API key to test.' };
@@ -175,7 +217,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
           const errMsg = data.error?.message || `HTTP ${res.status}: Invalid Gemini API key.`;
           return { success: false, message: errMsg };
         }
-      } else {
+      } else if (provider === 'groq') {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 7000);
 
@@ -199,6 +241,35 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
         } else {
           const data = await res.json().catch(() => ({}));
           const errMsg = data.error?.message || `HTTP ${res.status}: Invalid Groq API key.`;
+          return { success: false, message: errMsg };
+        }
+      } else {
+        // OpenRouter
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 9000);
+
+        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${key}`,
+            'HTTP-Referer': 'https://aayon.app',
+            'X-Title': 'AAYON Personal OS',
+          },
+          body: JSON.stringify({
+            model: 'meta-llama/llama-3.3-70b-instruct:free',
+            messages: [{ role: 'user', content: 'Respond with OK' }],
+            max_tokens: 5,
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+
+        if (res.ok) {
+          return { success: true, message: 'OpenRouter (DeepSeek R1 / Llama 3.3 Free) connected! 🚀' };
+        } else {
+          const data = await res.json().catch(() => ({}));
+          const errMsg = data.error?.message || `HTTP ${res.status}: Invalid OpenRouter key.`;
           return { success: false, message: errMsg };
         }
       }

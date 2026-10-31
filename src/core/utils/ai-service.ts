@@ -4,7 +4,7 @@ export interface ChatMessage {
   text: string;
 }
 
-export type AIProvider = 'gemini' | 'groq' | 'ollama' | 'huggingface' | 'fallback';
+export type AIProvider = 'gemini' | 'groq' | 'openrouter' | 'ollama' | 'huggingface' | 'fallback';
 
 interface QueryOptions {
   systemPrompt?: string;
@@ -17,6 +17,7 @@ export class AIService {
   // Configuration keys
   private static geminiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
   private static groqKey = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
+  private static openrouterKey = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY || '';
   private static hfKey = process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY || '';
   private static ollamaUrl = process.env.EXPO_PUBLIC_OLLAMA_URL || '';
   private static ollamaModel = process.env.EXPO_PUBLIC_OLLAMA_MODEL || 'llama3.2';
@@ -80,6 +81,18 @@ export class AIService {
   }
 
   /**
+   * Returns active OpenRouter Key from user config or environment
+   */
+  static getOpenRouterKey(): string {
+    try {
+      const { useAiConfigStore } = require('../state/ai-config-store');
+      const userKey = useAiConfigStore.getState().openrouterKey;
+      if (this.isValidKey(userKey)) return userKey.trim();
+    } catch {}
+    return process.env.EXPO_PUBLIC_OPENROUTER_API_KEY || '';
+  }
+
+  /**
    * Returns list of configured and available providers
    */
   static getConfiguredProviders(): AIProvider[] {
@@ -92,13 +105,20 @@ export class AIService {
 
     const hasGroq = this.isValidKey(this.getGroqKey());
     const hasGemini = this.isValidKey(this.getGeminiKey());
+    const hasOpenRouter = this.isValidKey(this.getOpenRouterKey());
 
-    if (preferred === 'gemini') {
+    if (preferred === 'openrouter' && hasOpenRouter) {
+      list.push('openrouter');
+      if (hasGroq) list.push('groq');
+      if (hasGemini) list.push('gemini');
+    } else if (preferred === 'gemini') {
       if (hasGemini) list.push('gemini');
       if (hasGroq) list.push('groq');
+      if (hasOpenRouter) list.push('openrouter');
     } else {
       if (hasGroq) list.push('groq');
       if (hasGemini) list.push('gemini');
+      if (hasOpenRouter) list.push('openrouter');
     }
 
     if (this.ollamaUrl && this.ollamaUrl.startsWith('http')) list.push('ollama');
@@ -115,7 +135,7 @@ export class AIService {
   }
 
   /**
-   * Unified multi-provider runner with automatic failover (Groq -> Gemini -> Ollama -> HuggingFace)
+   * Unified multi-provider runner with automatic failover (Groq -> Gemini -> OpenRouter -> Ollama -> HuggingFace)
    */
   private static async queryLLM(options: QueryOptions): Promise<string | null> {
     const providers = this.getConfiguredProviders();
@@ -129,6 +149,9 @@ export class AIService {
             break;
           case 'gemini':
             result = await this.callGemini(options);
+            break;
+          case 'openrouter':
+            result = await this.callOpenRouter(options);
             break;
           case 'ollama':
             result = await this.callOllama(options);
@@ -259,6 +282,70 @@ export class AIService {
             temperature: 0.7,
           }),
         });
+
+        if (!response.ok) continue;
+        const data = await response.json();
+        const text = data.choices?.[0]?.message?.content;
+        if (text) return text;
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Provider: OpenRouter (DeepSeek R1, Llama 3.3 70B, Free Models)
+   */
+  private static async callOpenRouter(options: QueryOptions): Promise<string | null> {
+    const key = this.getOpenRouterKey();
+    const models = [
+      'deepseek/deepseek-r1:free',
+      'meta-llama/llama-3.3-70b-instruct:free',
+      'google/gemini-2.0-flash-exp:free',
+      'qwen/qwen-2.5-72b-instruct:free',
+      'mistralai/mistral-7b-instruct:free',
+    ];
+
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
+    if (options.systemPrompt) {
+      messages.push({ role: 'system', content: options.systemPrompt });
+    }
+
+    if (options.history) {
+      for (const msg of options.history.slice(-4)) {
+        messages.push({
+          role: msg.sender === 'agent' ? 'assistant' : 'user',
+          content: msg.text,
+        });
+      }
+    }
+
+    messages.push({ role: 'user', content: options.userPrompt });
+
+    for (const model of models) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 9000);
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${key}`,
+            'HTTP-Referer': 'https://aayon.app',
+            'X-Title': 'AAYON Personal OS',
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            max_tokens: options.maxTokens || 1024,
+            temperature: 0.7,
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
 
         if (!response.ok) continue;
         const data = await response.json();

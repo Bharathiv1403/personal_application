@@ -29,7 +29,7 @@ interface ApiKeyModalProps {
 }
 
 export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ visible, onClose, onSuccess }) => {
-  const [activeTab, setActiveTab] = useState<'gemini' | 'groq'>('gemini');
+  const [activeTab, setActiveTab] = useState<'gemini' | 'groq' | 'openrouter'>('gemini');
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -37,25 +37,30 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ visible, onClose, onSu
 
   const geminiKey = useAiConfigStore((s) => s.geminiKey);
   const groqKey = useAiConfigStore((s) => s.groqKey);
+  const openrouterKey = useAiConfigStore((s) => s.openrouterKey);
   const saveGeminiKey = useAiConfigStore((s) => s.saveGeminiKey);
   const saveGroqKey = useAiConfigStore((s) => s.saveGroqKey);
+  const saveOpenRouterKey = useAiConfigStore((s) => s.saveOpenRouterKey);
   const removeKey = useAiConfigStore((s) => s.removeKey);
   const testApiKey = useAiConfigStore((s) => s.testApiKey);
 
   useEffect(() => {
     if (visible) {
-      const current = activeTab === 'gemini' ? geminiKey : groqKey;
+      const current =
+        activeTab === 'gemini' ? geminiKey : activeTab === 'groq' ? groqKey : openrouterKey;
       setApiKeyInput(current);
       setTestResult(null);
     }
-  }, [visible, activeTab, geminiKey, groqKey]);
+  }, [visible, activeTab, geminiKey, groqKey, openrouterKey]);
 
   const handleOpenAiStudio = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     if (activeTab === 'gemini') {
       await WebBrowser.openBrowserAsync('https://aistudio.google.com/app/apikey');
-    } else {
+    } else if (activeTab === 'groq') {
       await WebBrowser.openBrowserAsync('https://console.groq.com/keys');
+    } else {
+      await WebBrowser.openBrowserAsync('https://openrouter.ai/keys');
     }
   };
 
@@ -105,8 +110,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ visible, onClose, onSu
     let saved = false;
     if (activeTab === 'gemini') {
       saved = await saveGeminiKey(apiKeyInput.trim());
-    } else {
+    } else if (activeTab === 'groq') {
       saved = await saveGroqKey(apiKeyInput.trim());
+    } else {
+      saved = await saveOpenRouterKey(apiKeyInput.trim());
     }
 
     if (saved) {
@@ -120,9 +127,11 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ visible, onClose, onSu
   };
 
   const handleRemove = async () => {
+    const providerName =
+      activeTab === 'gemini' ? 'Google Gemini' : activeTab === 'groq' ? 'Groq Cloud' : 'OpenRouter';
     Alert.alert(
       'Remove API Key?',
-      `Are you sure you want to remove your ${activeTab === 'gemini' ? 'Google Gemini' : 'Groq'} key?`,
+      `Are you sure you want to remove your ${providerName} key?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -176,11 +185,11 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ visible, onClose, onSu
               >
                 <Ionicons
                   name="sparkles"
-                  size={15}
+                  size={14}
                   color={activeTab === 'gemini' ? Colors.primary : Colors.textMuted}
                 />
                 <Text style={[styles.tabText, activeTab === 'gemini' && styles.tabTextActive]}>
-                  Google Gemini (Free)
+                  Gemini (Free)
                 </Text>
               </TouchableOpacity>
 
@@ -193,11 +202,28 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ visible, onClose, onSu
               >
                 <Ionicons
                   name="flash"
-                  size={15}
+                  size={14}
                   color={activeTab === 'groq' ? Colors.cyan : Colors.textMuted}
                 />
                 <Text style={[styles.tabText, activeTab === 'groq' && styles.tabTextActive]}>
-                  Groq Cloud (Fast)
+                  Groq (Fast)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.tabButton, activeTab === 'openrouter' && styles.tabButtonActive]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  setActiveTab('openrouter');
+                }}
+              >
+                <Ionicons
+                  name="globe"
+                  size={14}
+                  color={activeTab === 'openrouter' ? '#A855F7' : Colors.textMuted}
+                />
+                <Text style={[styles.tabText, activeTab === 'openrouter' && styles.tabTextActive]}>
+                  OpenRouter
                 </Text>
               </TouchableOpacity>
             </View>
@@ -206,31 +232,51 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ visible, onClose, onSu
             <GlassCard style={styles.infoCard}>
               <View style={styles.infoRow}>
                 <Ionicons
-                  name={activeTab === 'gemini' ? 'logo-google' : 'server-outline'}
+                  name={
+                    activeTab === 'gemini'
+                      ? 'logo-google'
+                      : activeTab === 'groq'
+                      ? 'server-outline'
+                      : 'globe-outline'
+                  }
                   size={20}
-                  color={activeTab === 'gemini' ? '#38BDF8' : '#F59E0B'}
+                  color={
+                    activeTab === 'gemini' ? '#38BDF8' : activeTab === 'groq' ? '#F59E0B' : '#A855F7'
+                  }
                 />
                 <Text style={styles.infoTitle}>
                   {activeTab === 'gemini'
                     ? 'Google AI Studio (Gemini 1.5 & 2.0)'
-                    : 'Groq Cloud Console (Llama 3.1 & 3.3)'}
+                    : activeTab === 'groq'
+                    ? 'Groq Cloud Console (Llama 3.1 & 3.3)'
+                    : 'OpenRouter (DeepSeek R1 / Llama 3.3 Free)'}
                 </Text>
               </View>
               <Text style={styles.infoDesc}>
                 {activeTab === 'gemini'
                   ? 'Google offers 15 requests per minute 100% free with no credit card required. It generates cover letters, ATS resume fixes, and morning life briefings.'
-                  : 'Groq provides ultra-fast sub-second responses using Llama 3 models with generous free daily limits.'}
+                  : activeTab === 'groq'
+                  ? 'Groq provides ultra-fast sub-second responses using Llama 3 models with generous free daily limits.'
+                  : 'OpenRouter connects you with DeepSeek R1, Llama 3.3 70B, and Gemini for 100% free. Sign in with Google at openrouter.ai and generate your free API key.'}
               </Text>
 
               <TouchableOpacity style={styles.externalLinkBtn} onPress={handleOpenAiStudio}>
                 <Ionicons name="open-outline" size={16} color="#FFFFFF" />
                 <Text style={styles.externalLinkText}>
-                  {activeTab === 'gemini' ? 'Open Google AI Studio (Get Key)' : 'Open Groq Console (Get Key)'}
+                  {activeTab === 'gemini'
+                    ? 'Open Google AI Studio (Get Key)'
+                    : activeTab === 'groq'
+                    ? 'Open Groq Console (Get Key)'
+                    : 'Open OpenRouter Keys Console'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleOpenAiStudio} style={{ marginTop: 6 }}>
                 <Text style={styles.urlHintText}>
-                  {activeTab === 'gemini' ? 'https://aistudio.google.com/app/apikey' : 'https://console.groq.com/keys'}
+                  {activeTab === 'gemini'
+                    ? 'https://aistudio.google.com/app/apikey'
+                    : activeTab === 'groq'
+                    ? 'https://console.groq.com/keys'
+                    : 'https://openrouter.ai/keys'}
                 </Text>
               </TouchableOpacity>
             </GlassCard>
@@ -239,7 +285,11 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ visible, onClose, onSu
             <View style={styles.inputSection}>
               <View style={styles.inputHeaderRow}>
                 <Text style={styles.inputLabel}>
-                  {activeTab === 'gemini' ? 'Gemini API Key' : 'Groq API Key'}
+                  {activeTab === 'gemini'
+                    ? 'Gemini API Key'
+                    : activeTab === 'groq'
+                    ? 'Groq API Key'
+                    : 'OpenRouter API Key'}
                 </Text>
                 <TouchableOpacity style={styles.pasteBtn} onPress={handlePasteClipboard}>
                   <Ionicons name="clipboard-outline" size={13} color={Colors.cyan} />
@@ -255,7 +305,13 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ visible, onClose, onSu
                     setApiKeyInput(val);
                     setTestResult(null);
                   }}
-                  placeholder={activeTab === 'gemini' ? 'AIzaSy...' : 'gsk_...'}
+                  placeholder={
+                    activeTab === 'gemini'
+                      ? 'AIzaSy...'
+                      : activeTab === 'groq'
+                      ? 'gsk_...'
+                      : 'sk-or-v1-...'
+                  }
                   placeholderTextColor={Colors.textMuted}
                   secureTextEntry={!showKey}
                   autoCapitalize="none"
