@@ -225,7 +225,12 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ visible, onClose, onSu
               <TouchableOpacity style={styles.externalLinkBtn} onPress={handleOpenAiStudio}>
                 <Ionicons name="open-outline" size={16} color="#FFFFFF" />
                 <Text style={styles.externalLinkText}>
-                  {activeTab === 'gemini' ? 'Get Free Key from Google AI Studio' : 'Get Free Key from Groq Console'}
+                  {activeTab === 'gemini' ? 'Open Google AI Studio (Get Key)' : 'Open Groq Console (Get Key)'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleOpenAiStudio} style={{ marginTop: 6 }}>
+                <Text style={styles.urlHintText}>
+                  {activeTab === 'gemini' ? 'https://aistudio.google.com/app/apikey' : 'https://console.groq.com/keys'}
                 </Text>
               </TouchableOpacity>
             </GlassCard>
@@ -445,6 +450,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#38BDF8',
+  },
+  urlHintText: {
+    fontSize: 11,
+    color: '#38BDF8',
+    textAlign: 'center',
+    textDecorationLine: 'underline',
   },
   inputSection: {
     marginBottom: Spacing.md,
