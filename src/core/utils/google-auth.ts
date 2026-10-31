@@ -1,6 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -12,19 +12,24 @@ export interface GoogleUserProfile {
 }
 
 export class GoogleAuthService {
-  private static clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
+  private static clientId =
+    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
+    '117479084723-o6h336o1dst57hit2j59pum1mprh3jot.apps.googleusercontent.com';
 
   /**
-   * Triggers Google Sign-In OAuth flow or smart account picker
+   * Triggers Google Sign-In OAuth flow with account picker
    */
   static async promptGoogleSignIn(): Promise<GoogleUserProfile | null> {
     const clientId = this.clientId;
 
     if (clientId && !clientId.includes('your_google_client_id')) {
       try {
-        const redirectUri = AuthSession.makeRedirectUri({
-          scheme: 'aayon',
-        });
+        // Reverse DNS scheme for Android OAuth Client ID
+        const clientPrefix = clientId.split('.')[0];
+        const reverseScheme = `com.googleusercontent.apps.${clientPrefix}`;
+        const redirectUri = Platform.OS === 'android'
+          ? `${reverseScheme}:/oauth2redirect`
+          : AuthSession.makeRedirectUri({ scheme: 'aayon' });
 
         const discovery = {
           authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -37,6 +42,9 @@ export class GoogleAuthService {
           redirectUri,
           scopes: ['openid', 'profile', 'email'],
           responseType: AuthSession.ResponseType.Token,
+          extraParams: {
+            prompt: 'select_account',
+          },
         });
 
         const result = await request.promptAsync(discovery);
@@ -50,7 +58,7 @@ export class GoogleAuthService {
           if (response.ok) {
             const data = await response.json();
             return {
-              id: data.id,
+              id: data.id || `google-${Date.now()}`,
               name: data.name || data.given_name || 'Google User',
               email: data.email,
               photoUrl: data.picture,
@@ -60,35 +68,18 @@ export class GoogleAuthService {
         return null;
       } catch (err) {
         console.warn('[GoogleAuthService] OAuth error:', err);
+        Alert.alert(
+          'Google Sign-In Failed',
+          'Could not complete Google authentication. Please check your internet connection or use manual registration.'
+        );
+        return null;
       }
     }
 
-    // Sandbox / Development fallback when EXPO_PUBLIC_GOOGLE_CLIENT_ID is not yet configured
-    // For Production Play Store builds, add your OAuth Web Client ID in .env
-    return new Promise((resolve) => {
-      Alert.alert(
-        'Google Sign-In 🌐',
-        'Google Cloud OAuth Client ID is not configured in .env for this development build.\n\nChoose an account to continue:',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-            onPress: () => resolve(null),
-          },
-          {
-            text: 'Continue with Google Account',
-            onPress: () => {
-              const uniqueId = `user-${Date.now().toString().slice(-4)}`;
-              resolve({
-                id: uniqueId,
-                name: 'App User',
-                email: 'user@gmail.com',
-                photoUrl: undefined,
-              });
-            },
-          },
-        ]
-      );
-    });
+    Alert.alert(
+      'Google Sign-In',
+      'Google Client ID is not configured. Please register manually with your name, email and PIN.'
+    );
+    return null;
   }
 }

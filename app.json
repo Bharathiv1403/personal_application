@@ -2,7 +2,10 @@
   "expo": {
     "name": "AAYON",
     "slug": "aayon",
-    "scheme": "aayon",
+    "scheme": [
+      "aayon",
+      "com.googleusercontent.apps.117479084723-o6h336o1dst57hit2j59pum1mprh3jot"
+    ],
     "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

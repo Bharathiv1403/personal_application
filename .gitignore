@@ -35,6 +35,8 @@ yarn-error.*
 .env*.local
 .env.production
 google-services.json
+Document/client_secret_*.json
+Document/*.json
 
 # typescript
 *.tsbuildinfo
