@@ -51,6 +51,7 @@ jobs:
           EXPO_PUBLIC_OLLAMA_URL: ${{ secrets.EXPO_PUBLIC_OLLAMA_URL }}
           EXPO_PUBLIC_WEATHER_API_KEY: ${{ secrets.EXPO_PUBLIC_WEATHER_API_KEY }}
           EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_CLIENT_ID }}
+          EXPO_PUBLIC_OPENROUTER_API_KEY: ${{ secrets.EXPO_PUBLIC_OPENROUTER_API_KEY }}
         run: npx expo prebuild --platform android --clean
 
       - name: 🔨 Build Android Release APK
@@ -62,6 +63,7 @@ jobs:
           EXPO_PUBLIC_OLLAMA_URL: ${{ secrets.EXPO_PUBLIC_OLLAMA_URL }}
           EXPO_PUBLIC_WEATHER_API_KEY: ${{ secrets.EXPO_PUBLIC_WEATHER_API_KEY }}
           EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_CLIENT_ID }}
+          EXPO_PUBLIC_OPENROUTER_API_KEY: ${{ secrets.EXPO_PUBLIC_OPENROUTER_API_KEY }}
         run: |
           cd android
           chmod +x gradlew

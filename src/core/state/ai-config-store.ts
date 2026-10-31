@@ -257,7 +257,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
             'X-Title': 'AAYON Personal OS',
           },
           body: JSON.stringify({
-            model: 'meta-llama/llama-3.3-70b-instruct:free',
+            model: 'openrouter/auto',
             messages: [{ role: 'user', content: 'Respond with OK' }],
             max_tokens: 5,
           }),
@@ -266,7 +266,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
         clearTimeout(timeout);
 
         if (res.ok) {
-          return { success: true, message: 'OpenRouter (DeepSeek R1 / Llama 3.3 Free) connected! 🚀' };
+          return { success: true, message: 'OpenRouter (Llama 3.3 / DeepSeek / Gemini) connected! 🚀' };
         } else {
           const data = await res.json().catch(() => ({}));
           const errMsg = data.error?.message || `HTTP ${res.status}: Invalid OpenRouter key.`;

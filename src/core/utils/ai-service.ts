@@ -316,11 +316,12 @@ export class AIService {
   private static async callOpenRouter(options: QueryOptions): Promise<string | null> {
     const key = this.getOpenRouterKey();
     const models = [
-      'deepseek/deepseek-r1:free',
-      'meta-llama/llama-3.3-70b-instruct:free',
-      'google/gemini-2.0-flash-exp:free',
-      'qwen/qwen-2.5-72b-instruct:free',
-      'mistralai/mistral-7b-instruct:free',
+      'openrouter/auto',
+      'meta-llama/llama-3.3-70b-instruct',
+      'deepseek/deepseek-chat',
+      'google/gemini-2.0-flash-001',
+      'qwen/qwen-2.5-72b-instruct',
+      'mistralai/mistral-7b-instruct',
     ];
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
