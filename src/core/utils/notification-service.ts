@@ -38,6 +38,14 @@ export class NotificationService {
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#6366F1',
         });
+
+        await Notifications.setNotificationChannelAsync('step_tracker_service', {
+          name: 'Active Step Tracker',
+          importance: Notifications.AndroidImportance.LOW,
+          vibrationPattern: [0],
+          enableVibrate: false,
+          showBadge: false,
+        });
       }
 
       return true;
@@ -217,6 +225,42 @@ export class NotificationService {
     } catch (e) {
       console.warn('[NotificationService] Screen limit alert failed:', e);
       return null;
+    }
+  }
+
+  /**
+   * Display or update sticky background step tracker notification
+   */
+  static async showStepTrackerNotification(steps: number, goal: number): Promise<void> {
+    if (Platform.OS !== 'android') return;
+    try {
+      const percent = Math.min(100, Math.round((steps / (goal || 10000)) * 100));
+      await Notifications.scheduleNotificationAsync({
+        identifier: 'aayon_step_tracker_ongoing',
+        content: {
+          title: 'AAYON: Step Tracker 🚶‍♂️',
+          body: `${steps.toLocaleString('en-IN')} / ${goal.toLocaleString('en-IN')} steps (${percent}%)`,
+          sticky: true,
+          autoDismiss: false,
+          priority: Notifications.AndroidNotificationPriority.LOW,
+          sound: false,
+          data: { type: 'step_tracker' },
+        },
+        trigger: null,
+      });
+    } catch (e) {
+      // Silently ignore notification failure
+    }
+  }
+
+  /**
+   * Remove sticky background step tracker notification
+   */
+  static async cancelStepTrackerNotification(): Promise<void> {
+    try {
+      await Notifications.dismissNotificationAsync('aayon_step_tracker_ongoing');
+    } catch {
+      // Silently ignore
     }
   }
 
