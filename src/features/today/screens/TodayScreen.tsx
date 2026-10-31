@@ -132,22 +132,7 @@ export const TodayScreen: React.FC = () => {
       if (res) setWeather(res);
     });
 
-    // 2. Hardware pedometer sync
-    let unsubscribePedometer: (() => void) | null = null;
-    PedometerService.checkAvailability().then(({ isAvailable, permissionGranted, hasHistoricalSupport }) => {
-      if (isAvailable && permissionGranted) {
-        if (hasHistoricalSupport) {
-          PedometerService.getTodaySteps().then((realSteps) => {
-            if (realSteps > 0) setTodaySteps(realSteps);
-          });
-        }
-        unsubscribePedometer = PedometerService.subscribeLiveSteps((delta) => {
-          if (delta > 0) addLiveSteps(delta);
-        });
-      }
-    });
-
-    // 3. Load saved tasks
+    // 2. Load saved tasks
     AsyncStorage.getItem(STORAGE_KEY_TASKS).then((saved) => {
       if (saved) {
         try {
@@ -160,10 +145,6 @@ export const TodayScreen: React.FC = () => {
       }
       setTasks([]);
     });
-
-    return () => {
-      if (unsubscribePedometer) unsubscribePedometer();
-    };
   }, []);
 
   // Update AI Briefing when metrics change
@@ -228,7 +209,9 @@ export const TodayScreen: React.FC = () => {
       const res = await WeatherService.getCurrentWeather(userCity);
       if (res) setWeather(res);
       const steps = await PedometerService.getTodaySteps();
-      setTodaySteps(steps);
+      if (steps > 0) {
+        setTodaySteps(steps);
+      }
     } catch {
       // silently ignore
     } finally {

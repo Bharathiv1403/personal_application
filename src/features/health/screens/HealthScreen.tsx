@@ -61,7 +61,6 @@ export const HealthScreen: React.FC = () => {
   const openScreenLimitModal = useHealthStore((s) => s.openScreenLimitModal);
   const screenTimeLogs = useHealthStore((s) => s.screenTimeLogs);
 
-  const addLiveSteps = useHealthStore((s) => s.addLiveSteps);
   const setTodaySteps = useHealthStore((s) => s.setTodaySteps);
   const addWater = useHealthStore((s) => s.addWater);
   const checkAndResetDay = useHealthStore((s) => s.checkAndResetDay);
@@ -69,7 +68,6 @@ export const HealthScreen: React.FC = () => {
   // Subscribe to hardware pedometer on mount
   useEffect(() => {
     checkAndResetDay();
-    let unsubscribe: (() => void) | null = null;
 
     PedometerService.checkAvailability().then(({ isAvailable, permissionGranted, hasHistoricalSupport }) => {
       if (isAvailable && permissionGranted) {
@@ -81,28 +79,13 @@ export const HealthScreen: React.FC = () => {
             }
           });
         } else {
-          setSensorNote('Live sensor active while app is open');
+          setSensorNote('Live hardware pedometer active');
         }
-
-        unsubscribe = PedometerService.subscribeLiveSteps((deltaSteps) => {
-          if (deltaSteps > 0) {
-            addLiveSteps(deltaSteps);
-          }
-        });
       } else {
         setSensorNote('Sensor offline / permission pending');
       }
     });
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [addLiveSteps, setTodaySteps, checkAndResetDay]);
-
-  const handleManualWalkSimulate = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    addLiveSteps(250);
-  };
+  }, [setTodaySteps, checkAndResetDay]);
 
   const handleWaterTap = (amount: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -161,11 +144,7 @@ export const HealthScreen: React.FC = () => {
 
         {/* Google Fit Circular Steps Card */}
         <GlassCard variant="highlight" style={styles.stepRingCard}>
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={handleManualWalkSimulate}
-            style={styles.ringVisualContainer}
-          >
+          <View style={styles.ringVisualContainer}>
             <View style={[styles.ringOuterCircle, percentGoal >= 100 && styles.ringGoalReached]}>
               <View style={styles.ringInnerCircle}>
                 <Ionicons
@@ -178,20 +157,12 @@ export const HealthScreen: React.FC = () => {
                 <Text style={styles.stepsPercentText}>{percentGoal}% of daily target</Text>
               </View>
             </View>
-          </TouchableOpacity>
+          </View>
 
-          {/* Quick sync & simulate buttons */}
+          {/* Step Actions */}
           <View style={styles.stepActionsRow}>
             <TouchableOpacity
-              style={styles.stepActionBtn}
-              onPress={handleManualWalkSimulate}
-            >
-              <Ionicons name="walk" size={14} color={Colors.primary} />
-              <Text style={styles.stepActionBtnText}>+250 Steps</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.stepActionBtn, styles.stepActionBtnPrimary]}
+              style={[styles.stepActionBtn, styles.stepActionBtnPrimary, { flex: 1 }]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                 setAdjustStepsModalVisible(true);

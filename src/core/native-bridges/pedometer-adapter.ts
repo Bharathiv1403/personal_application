@@ -10,7 +10,7 @@ export interface PedometerStatus {
 export class PedometerService {
   private static nativeSubscription: { remove: () => void } | null = null;
   private static listeners = new Set<(deltaSteps: number) => void>();
-  private static lastCumulativeSteps: number = 0;
+  private static lastCumulativeSteps: number | null = null;
 
   static async checkAvailability(): Promise<PedometerStatus> {
     try {
@@ -57,20 +57,32 @@ export class PedometerService {
   /**
    * Subscribes to live step updates.
    * Calculates delta between consecutive events instead of feeding cumulative steps.
+   * Prevents initial sensor reading jump and filters out sensor noise.
    */
   static subscribeLiveSteps(onStepChange: (deltaSteps: number) => void): () => void {
     try {
       this.listeners.add(onStepChange);
 
       if (!this.nativeSubscription) {
-        this.lastCumulativeSteps = 0;
+        this.lastCumulativeSteps = null;
         this.nativeSubscription = Pedometer.watchStepCount((result) => {
           if (result && typeof result.steps === 'number') {
             const currentSteps = result.steps;
-            const delta = Math.max(0, currentSteps - this.lastCumulativeSteps);
+
+            // FIRST SENSOR EVENT: Establish base reading!
+            // Do NOT treat the phone hardware's cumulative counter as newly taken steps!
+            if (this.lastCumulativeSteps === null) {
+              this.lastCumulativeSteps = currentSteps;
+              return;
+            }
+
+            const delta = currentSteps - this.lastCumulativeSteps;
             this.lastCumulativeSteps = currentSteps;
 
-            if (delta > 0) {
+            // Strict human walking physics filter:
+            // Delta must be positive and humanly realistic (at most 25 steps per sensor poll event).
+            // Any jump larger than 25 in a fraction of a second is a sensor anomaly/noise.
+            if (delta > 0 && delta <= 25) {
               this.listeners.forEach((listener) => {
                 try {
                   listener(delta);
@@ -88,7 +100,7 @@ export class PedometerService {
         if (this.listeners.size === 0 && this.nativeSubscription) {
           this.nativeSubscription.remove();
           this.nativeSubscription = null;
-          this.lastCumulativeSteps = 0;
+          this.lastCumulativeSteps = null;
         }
       };
     } catch {

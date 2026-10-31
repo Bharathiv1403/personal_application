@@ -14,6 +14,7 @@ import { useAiConfigStore } from '@/core/state/ai-config-store';
 import { NotificationService } from '@/core/utils/notification-service';
 import { Colors } from '@/core/design-system/tokens/colors';
 import { ScreenTimeTracker } from '@/core/services/screen-time-tracker';
+import { StepTracker } from '@/core/services/step-tracker';
 import { ScreenTimeLimitModal } from '@/features/health/components/ScreenTimeLimitModal';
 import { useHealthStore } from '@/features/health/state/health-store';
 
@@ -47,6 +48,7 @@ export const RootNavigator: React.FC = () => {
     initializeAuth();
     initializeAiConfig();
     ScreenTimeTracker.init();
+    StepTracker.init();
 
     NotificationService.requestPermissions().then((granted) => {
       if (granted) {
@@ -74,6 +76,7 @@ export const RootNavigator: React.FC = () => {
     return () => {
       subscription.remove();
       ScreenTimeTracker.destroy();
+      StepTracker.destroy();
     };
   }, [initializeAuth, initializeAiConfig]);
 
