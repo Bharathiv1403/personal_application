@@ -4,7 +4,7 @@ export interface ChatMessage {
   text: string;
 }
 
-export type AIProvider = 'gemini' | 'groq' | 'openrouter' | 'ollama' | 'huggingface' | 'fallback';
+export type AIProvider = 'gemini' | 'groq' | 'openrouter' | 'pollinations' | 'ollama' | 'huggingface' | 'fallback';
 
 interface QueryOptions {
   systemPrompt?: string;
@@ -77,7 +77,7 @@ export class AIService {
       const userKey = useAiConfigStore.getState().groqKey;
       if (this.isValidKey(userKey)) return userKey.trim();
     } catch {}
-    return process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
+    return process.env.EXPO_PUBLIC_GROQ_API_KEY || this.groqKey;
   }
 
   /**
@@ -111,14 +111,26 @@ export class AIService {
       list.push('openrouter');
       if (hasGroq) list.push('groq');
       if (hasGemini) list.push('gemini');
-    } else if (preferred === 'gemini') {
-      if (hasGemini) list.push('gemini');
+    } else if (preferred === 'gemini' && hasGemini) {
+      list.push('gemini');
       if (hasGroq) list.push('groq');
+      if (hasOpenRouter) list.push('openrouter');
+    } else if (preferred === 'groq' && hasGroq) {
+      list.push('groq');
+      if (hasGemini) list.push('gemini');
       if (hasOpenRouter) list.push('openrouter');
     } else {
-      if (hasGroq) list.push('groq');
-      if (hasGemini) list.push('gemini');
       if (hasOpenRouter) list.push('openrouter');
+      if (hasGemini) list.push('gemini');
+      if (hasGroq) list.push('groq');
+    }
+
+    // Zero-Key Public AI (Pollinations.ai)
+    list.push('pollinations');
+
+    // Default backup developer fallback if needed
+    if (hasGroq && !list.includes('groq')) {
+      list.push('groq');
     }
 
     if (this.ollamaUrl && this.ollamaUrl.startsWith('http')) list.push('ollama');
@@ -127,7 +139,7 @@ export class AIService {
   }
 
   static hasConfiguredKey(): boolean {
-    return this.getConfiguredProviders().length > 0;
+    return true; // Always true: Pollinations Zero-Key AI is always available without any setup!
   }
 
   static isValidKey(key?: string): boolean {
@@ -135,7 +147,7 @@ export class AIService {
   }
 
   /**
-   * Unified multi-provider runner with automatic failover (Groq -> Gemini -> OpenRouter -> Ollama -> HuggingFace)
+   * Unified multi-provider runner with automatic failover (OpenRouter -> Gemini -> Groq -> Pollinations -> Ollama)
    */
   private static async queryLLM(options: QueryOptions): Promise<string | null> {
     const providers = this.getConfiguredProviders();
@@ -144,14 +156,17 @@ export class AIService {
       try {
         let result: string | null = null;
         switch (provider) {
-          case 'groq':
-            result = await this.callGroq(options);
+          case 'openrouter':
+            result = await this.callOpenRouter(options);
             break;
           case 'gemini':
             result = await this.callGemini(options);
             break;
-          case 'openrouter':
-            result = await this.callOpenRouter(options);
+          case 'groq':
+            result = await this.callGroq(options);
+            break;
+          case 'pollinations':
+            result = await this.callPollinations(options);
             break;
           case 'ollama':
             result = await this.callOllama(options);
@@ -357,6 +372,53 @@ export class AIService {
     }
 
     return null;
+  }
+
+  /**
+   * Provider: Pollinations.ai (Zero-Key Public AI, 100% Free, No Account Needed)
+   */
+  private static async callPollinations(options: QueryOptions): Promise<string | null> {
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
+    if (options.systemPrompt) {
+      messages.push({ role: 'system', content: options.systemPrompt });
+    }
+
+    if (options.history) {
+      for (const msg of options.history.slice(-3)) {
+        messages.push({
+          role: msg.sender === 'agent' ? 'assistant' : 'user',
+          content: msg.text,
+        });
+      }
+    }
+
+    messages.push({ role: 'user', content: options.userPrompt });
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 9000);
+
+      const response = await fetch('https://text.pollinations.ai/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages,
+          model: 'openai-fast',
+          seed: Math.floor(Math.random() * 100000),
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) return null;
+      const text = await response.text();
+      if (!text || text.includes('Free limit reached') || text.includes('"error":')) {
+        return null;
+      }
+      return text.trim();
+    } catch {
+      return null;
+    }
   }
 
   /**

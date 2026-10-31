@@ -148,7 +148,12 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ visible, onClose, onSu
     );
   };
 
-  const hasSavedKey = activeTab === 'gemini' ? Boolean(geminiKey) : Boolean(groqKey);
+  const hasSavedKey =
+    activeTab === 'gemini'
+      ? Boolean(geminiKey)
+      : activeTab === 'groq'
+      ? Boolean(groqKey)
+      : Boolean(openrouterKey);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -161,11 +166,11 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ visible, onClose, onSu
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.headerTitle}>Configure Free AI Key</Text>
-                <Badge label="100% Free" variant="gold" />
+                <Text style={styles.headerTitle}>AI Engine & Keys</Text>
+                <Badge label="Zero-Key Ready ✨" variant="gold" />
               </View>
               <Text style={styles.headerSubtitle}>
-                Add your personal free API key to unlock AI Life Agent & Career features
+                Free Zero-Key AI (Pollinations.ai) is active out-of-the-box! Connect personal keys below for private limits.
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
