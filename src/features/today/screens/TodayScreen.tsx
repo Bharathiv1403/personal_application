@@ -238,10 +238,21 @@ export const TodayScreen: React.FC = () => {
       >
         {/* Top Header */}
         <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.menuButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              openSidebar();
+            }}
+          >
+            <Ionicons name="menu" size={22} color={Colors.textPrimary} />
+          </TouchableOpacity>
+
           <View style={styles.headerTitleWrap}>
             <Text style={styles.greeting} numberOfLines={1}>{getGreeting()}, {userName} 👋</Text>
             <View style={styles.subHeaderRow}>
-              <Text style={styles.subDate}>{formattedDate} • Life OS</Text>
+              <Text style={styles.subDate}>{formattedDate}</Text>
               {weather && (
                 <View style={styles.weatherBadge}>
                   <Text style={styles.weatherText}>⛅ {weather.tempCelsius}°C</Text>
@@ -249,29 +260,8 @@ export const TodayScreen: React.FC = () => {
               )}
             </View>
           </View>
+
           <View style={styles.headerActionsWrap}>
-            <TouchableOpacity
-              style={styles.bellButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                openSidebar();
-              }}
-            >
-              <Ionicons name="menu-outline" size={20} color={Colors.textPrimary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.bellButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                navigation.navigate('Settings');
-              }}
-            >
-              <Ionicons name="settings-outline" size={18} color={Colors.textPrimary} />
-            </TouchableOpacity>
-
             <TouchableOpacity
               style={styles.bellButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -283,7 +273,7 @@ export const TodayScreen: React.FC = () => {
                 ]);
               }}
             >
-              <Ionicons name="lock-closed-outline" size={18} color={Colors.textSecondary} />
+              <Ionicons name="lock-closed-outline" size={17} color={Colors.textSecondary} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -297,7 +287,7 @@ export const TodayScreen: React.FC = () => {
                 Alert.alert('Today Alerts 🔔', alertMsg);
               }}
             >
-              <Ionicons name="notifications-outline" size={20} color={Colors.textPrimary} />
+              <Ionicons name="notifications-outline" size={19} color={Colors.textPrimary} />
               <View style={styles.notificationDot} />
             </TouchableOpacity>
           </View>
@@ -343,63 +333,68 @@ export const TodayScreen: React.FC = () => {
           </GlassCard>
         </View>
 
-        {/* Executive Command Hub (Second Brain, Dump, KeePass, Sunday Reset, English Guide) */}
-        <View style={styles.commandBeltRow}>
+        {/* Executive Command Hub (Second Brain, Dump, KeePass, Sunday Reset) */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.commandBeltScroll}
+        >
           <TouchableOpacity
-            style={[styles.commandChip, { borderColor: '#38BDF8', backgroundColor: 'rgba(56, 189, 248, 0.12)' }]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              useEnglishLearningStore.getState().openModal();
-            }}
-          >
-            <Ionicons name="book" size={14} color="#38BDF8" />
-            <Text style={[styles.commandChipText, { color: '#38BDF8', fontWeight: '800' }]}>English Day 1 🇬🇧</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.commandChip, { borderColor: 'rgba(245, 158, 11, 0.3)', backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}
+            style={[styles.commandChip, { borderColor: 'rgba(245, 158, 11, 0.35)', backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setIsBrainDumpVisible(true);
             }}
           >
-            <Ionicons name="flash" size={14} color={Colors.gold} />
+            <Ionicons name="flash" size={13} color={Colors.gold} />
             <Text style={[styles.commandChipText, { color: Colors.gold }]}>Brain Dump</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.commandChip, { borderColor: 'rgba(6, 182, 212, 0.3)', backgroundColor: 'rgba(6, 182, 212, 0.08)' }]}
+            style={[styles.commandChip, { borderColor: 'rgba(6, 182, 212, 0.35)', backgroundColor: 'rgba(6, 182, 212, 0.1)' }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setIsSecondBrainVisible(true);
             }}
           >
-            <Ionicons name="journal-outline" size={14} color={Colors.cyan} />
+            <Ionicons name="journal-outline" size={13} color={Colors.cyan} />
             <Text style={[styles.commandChipText, { color: Colors.cyan }]}>Second Brain</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.commandChip, { borderColor: 'rgba(16, 185, 129, 0.3)', backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}
+            style={[styles.commandChip, { borderColor: 'rgba(16, 185, 129, 0.35)', backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setIsKeePassVisible(true);
             }}
           >
-            <Ionicons name="shield-checkmark-outline" size={14} color={Colors.primary} />
-            <Text style={[styles.commandChipText, { color: Colors.primary }]}>Passwords</Text>
+            <Ionicons name="shield-checkmark-outline" size={13} color={Colors.primary} />
+            <Text style={[styles.commandChipText, { color: Colors.primary }]}>Password Vault</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.commandChip, { borderColor: 'rgba(139, 92, 246, 0.3)', backgroundColor: 'rgba(139, 92, 246, 0.08)' }]}
+            style={[styles.commandChip, { borderColor: 'rgba(129, 140, 248, 0.35)', backgroundColor: 'rgba(129, 140, 248, 0.1)' }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setActivePomodoroTaskTitle(tasks[0]?.title || 'Deep Focus Session');
+              setIsPomodoroVisible(true);
+            }}
+          >
+            <Ionicons name="timer-outline" size={13} color="#818CF8" />
+            <Text style={[styles.commandChipText, { color: '#818CF8' }]}>Focus Timer</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.commandChip, { borderColor: 'rgba(168, 85, 247, 0.35)', backgroundColor: 'rgba(168, 85, 247, 0.1)' }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setIsSundayResetVisible(true);
             }}
           >
-            <Ionicons name="sparkles-outline" size={14} color={Colors.purple} />
-            <Text style={[styles.commandChipText, { color: Colors.purple }]}>Sunday Reset</Text>
+            <Ionicons name="sparkles-outline" size={13} color="#C084FC" />
+            <Text style={[styles.commandChipText, { color: '#C084FC' }]}>Sunday Reset</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
 
         {/* Daily English Practice Guide Banner */}
         <TouchableOpacity
@@ -409,23 +404,25 @@ export const TodayScreen: React.FC = () => {
             useEnglishLearningStore.getState().openModal();
           }}
         >
-          <GlassCard variant="elevated" style={styles.englishBannerCard}>
-            <View style={styles.englishBannerRow}>
-              <View style={styles.englishBannerIconBox}>
-                <Ionicons name="book" size={20} color="#38BDF8" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.englishBannerTitle}>English Daily Practice 🇬🇧</Text>
-                  <Badge label="Day 1 Active ⚡" variant="primary" />
-                </View>
-                <Text style={styles.englishBannerSub}>
-                  Day 1: Greetings & Self-Introduction • Visual Image Learning 📸
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          <View style={styles.englishBannerCard}>
+            <View style={styles.englishBannerIconBox}>
+              <Ionicons name="school-outline" size={20} color="#38BDF8" />
             </View>
-          </GlassCard>
+            <View style={{ flex: 1 }}>
+              <View style={styles.englishBannerTitleRow}>
+                <Text style={styles.englishBannerTitle}>English Daily Practice</Text>
+                <View style={styles.englishActivePill}>
+                  <Text style={styles.englishActivePillText}>Day 1 • Active ⚡</Text>
+                </View>
+              </View>
+              <Text style={styles.englishBannerSub} numberOfLines={1}>
+                Greetings & Intro • Sentence Builder • AI Chat
+              </Text>
+            </View>
+            <View style={styles.englishBannerChevronBox}>
+              <Ionicons name="chevron-forward" size={15} color="#38BDF8" />
+            </View>
+          </View>
         </TouchableOpacity>
 
         {/* Next Upcoming Event */}
@@ -453,27 +450,15 @@ export const TodayScreen: React.FC = () => {
         {/* Top Focus Priorities */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Daily Focus Priorities</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <TouchableOpacity
-              style={[styles.addTaskBtn, { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: 'rgba(245, 158, 11, 0.3)' }]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                setActivePomodoroTaskTitle(tasks[0]?.title || 'Deep Focus Session');
-                setIsPomodoroVisible(true);
-              }}
-            >
-              <Ionicons name="timer-outline" size={14} color={Colors.gold} />
-              <Text style={[styles.addTaskBtnText, { color: Colors.gold }]}>Focus Timer</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.addTaskBtn}
+              style={[styles.addTaskBtn, { backgroundColor: 'rgba(6, 182, 212, 0.12)', borderColor: 'rgba(6, 182, 212, 0.25)' }]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                 navigation.navigate('TodoList');
               }}
             >
-              <Ionicons name="list" size={14} color={Colors.cyan} />
+              <Ionicons name="list" size={13} color={Colors.cyan} />
               <Text style={[styles.addTaskBtnText, { color: Colors.cyan }]}>Full List</Text>
             </TouchableOpacity>
 
@@ -484,7 +469,7 @@ export const TodayScreen: React.FC = () => {
                 setIsAddTaskModalVisible(true);
               }}
             >
-              <Ionicons name="add" size={16} color={Colors.primary} />
+              <Ionicons name="add" size={15} color={Colors.primary} />
               <Text style={styles.addTaskBtnText}>Add</Text>
             </TouchableOpacity>
           </View>
@@ -738,26 +723,33 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
-    flexWrap: 'wrap',
-    gap: 8,
+    marginBottom: Spacing.md,
+    gap: 12,
+  },
+  menuButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitleWrap: {
     flex: 1,
-    minWidth: 160,
-    marginRight: 6,
+    justifyContent: 'center',
   },
   headerActionsWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 8,
     flexShrink: 0,
   },
   greeting: {
     fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium' }),
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: Colors.textPrimary,
   },
@@ -765,10 +757,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    marginTop: 3,
+    marginTop: 2,
   },
   subDate: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.textSecondary,
   },
   weatherBadge: {
@@ -783,8 +775,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bellButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: Radii.full,
     backgroundColor: Colors.card,
     borderWidth: 1,
@@ -794,16 +786,16 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   notificationDot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: Radii.full,
     backgroundColor: Colors.danger,
     position: 'absolute',
-    top: 9,
-    right: 9,
+    top: 7,
+    right: 7,
   },
   briefingCard: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
     padding: Spacing.md,
   },
   briefingHeader: {
@@ -826,24 +818,24 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     marginBottom: Spacing.md,
   },
-  commandBeltRow: {
+  commandBeltScroll: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: Spacing.lg,
+    gap: 9,
+    paddingBottom: 4,
+    marginBottom: Spacing.md,
+    paddingRight: Spacing.md,
   },
   commandChip: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 9,
-    paddingHorizontal: 4,
-    borderRadius: Radii.md,
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: Radii.full,
     borderWidth: 1,
   },
   commandChipText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
   metricCard: {
@@ -1122,34 +1114,61 @@ const styles = StyleSheet.create({
     shadowColor: Colors.danger,
   },
   englishBannerCard: {
-    padding: Spacing.md,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.sm,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
-  },
-  englishBannerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 12,
+    backgroundColor: 'rgba(56, 189, 248, 0.06)',
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.28)',
+    marginBottom: Spacing.md,
     gap: 12,
   },
   englishBannerIconBox: {
     width: 40,
     height: 40,
-    borderRadius: Radii.md,
+    borderRadius: 12,
     backgroundColor: 'rgba(56, 189, 248, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
+    borderColor: 'rgba(56, 189, 248, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  englishBannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   englishBannerTitle: {
     fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',
   },
+  englishActivePill: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: Radii.full,
+  },
+  englishActivePillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#34D399',
+  },
   englishBannerSub: {
     fontSize: 11,
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  englishBannerChevronBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

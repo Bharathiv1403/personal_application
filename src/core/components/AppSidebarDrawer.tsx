@@ -25,7 +25,7 @@ import { useMessageWriterStore } from '@/features/career/state/message-writer-st
 import { useVaultStore } from '@/features/vault/state/vault-store';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const DRAWER_WIDTH = Math.min(320, SCREEN_WIDTH * 0.82);
+const DRAWER_WIDTH = Math.min(335, Math.round(SCREEN_WIDTH * 0.84));
 
 export const AppSidebarDrawer: React.FC = () => {
   const isOpen = useSidebarStore((s) => s.isOpen);
@@ -120,11 +120,11 @@ export const AppSidebarDrawer: React.FC = () => {
   const hiddenTools = [
     {
       id: 'english-daily',
-      name: 'English Daily Guide 🇬🇧',
-      sub: 'Day 1 practice & visual image learner',
+      name: 'English Daily Guide',
+      sub: 'Lessons, sentence builder & translator',
       icon: 'book-outline' as const,
       color: '#38BDF8',
-      badge: 'Day 1 ⚡',
+      tag: 'Day 1',
       action: () => {
         closeSidebar();
         setTimeout(() => {
@@ -134,11 +134,11 @@ export const AppSidebarDrawer: React.FC = () => {
     },
     {
       id: 'email-writer',
-      name: 'Smart Email & Message Writer ✉️',
-      sub: 'Leave, appraisal, referral & WFH mails with Tamil guide',
+      name: 'Email & Message Writer',
+      sub: 'Leave, WFH, hike & client email templates',
       icon: 'mail-outline' as const,
       color: '#10B981',
-      badge: 'Workplace ⚡',
+      tag: 'AI',
       action: () => {
         closeSidebar();
         setTimeout(() => {
@@ -148,11 +148,11 @@ export const AppSidebarDrawer: React.FC = () => {
     },
     {
       id: 'vault-password-manager',
-      name: 'Password Manager & Vault 🔐',
-      sub: 'KeePass zero-knowledge credentials, 2FA TOTP & cards',
+      name: 'Password Vault & 2FA',
+      sub: 'KeePass credentials & live authenticator',
       icon: 'shield-checkmark-outline' as const,
       color: '#6366F1',
-      badge: 'Biometric 🛡️',
+      tag: '2FA',
       action: () => {
         closeSidebar();
         setTimeout(() => {
@@ -162,26 +162,25 @@ export const AppSidebarDrawer: React.FC = () => {
     },
     {
       id: 'todo',
-      name: 'Tasks & Todo List',
-      sub: 'Eisenhower matrix & checklists',
+      name: 'Tasks & Priorities',
+      sub: 'Checklists & Eisenhower matrix',
       icon: 'checkbox-outline' as const,
       color: '#60A5FA',
-      badge: 'Focus',
       action: () => navigateToScreen('TodoList'),
     },
     {
       id: 'career-hub',
-      name: 'Career All Tools Hub',
-      sub: 'Flashcards, ATS & mock interview',
+      name: 'Career Tools Hub',
+      sub: 'ATS resume, flashcards & mock interviews',
       icon: 'apps-outline' as const,
       color: '#38BDF8',
-      badge: '12 Tools',
+      tag: '12 Tools',
       action: () => navigateToTab('CareerTab'),
     },
     {
       id: 'settings-hub',
       name: 'Security & App Settings',
-      sub: 'Biometrics, auto-lock & API keys',
+      sub: 'Biometrics, auto-lock & update checker',
       icon: 'settings-outline' as const,
       color: '#94A3B8',
       action: () => navigateToScreen('Settings'),
@@ -240,9 +239,12 @@ export const AppSidebarDrawer: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.vaultBadgeRow}>
-              <Badge label="Encrypted Vault 🛡️" variant="primary" />
-              <Badge label="PIN Protected" variant="neutral" />
+            <View style={styles.vaultStatusRow}>
+              <View style={styles.vaultStatusDot} />
+              <Text style={styles.vaultStatusText}>AES-256 Vault</Text>
+              <Text style={styles.vaultStatusSep}>•</Text>
+              <Ionicons name="finger-print" size={11} color="#10B981" />
+              <Text style={styles.vaultStatusText}>Biometrics</Text>
             </View>
           </View>
 
@@ -317,12 +319,14 @@ export const AppSidebarDrawer: React.FC = () => {
                   <Ionicons name={tool.icon} size={18} color={tool.color} />
                 </View>
                 <View style={styles.navTextCol}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={styles.navTitleRow}>
                     <Text style={styles.navTitle} numberOfLines={1}>
                       {tool.name}
                     </Text>
-                    {tool.badge && (
-                      <Badge label={tool.badge} variant="cyan" />
+                    {tool.tag && (
+                      <View style={[styles.microTag, { backgroundColor: tool.color + '20', borderColor: tool.color + '45' }]}>
+                        <Text style={[styles.microTagText, { color: tool.color }]}>{tool.tag}</Text>
+                      </View>
                     )}
                   </View>
                   <Text style={styles.navSub} numberOfLines={1}>
@@ -439,11 +443,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  vaultBadgeRow: {
+  vaultStatusRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
     marginTop: 10,
-    flexWrap: 'wrap',
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: Radii.full,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.22)',
+  },
+  vaultStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  vaultStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#A7F3D0',
+  },
+  vaultStatusSep: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.3)',
   },
   searchBox: {
     flexDirection: 'row',
@@ -494,10 +520,29 @@ const styles = StyleSheet.create({
   navTextCol: {
     flex: 1,
   },
+  navTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
   navTitle: {
+    flex: 1,
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  microTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    flexShrink: 0,
+  },
+  microTagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   navSub: {
     fontSize: 10,
