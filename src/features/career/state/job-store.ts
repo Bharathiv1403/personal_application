@@ -71,7 +71,7 @@ export const getJobPlatformSource = (job: Partial<JobApplicationItem>): JobPlatf
     return { name: 'Handshake', icon: 'people', color: '#FB923C', bg: 'rgba(251, 146, 60, 0.15)' };
   }
   if (explicit.includes('company') || url.includes('greenhouse.io') || url.includes('lever.co') || url.includes('myworkdayjobs.com') || url.includes('careers.')) {
-    return { name: 'Company Site', icon: 'business', color: '#34D399', bg: 'rgba(52, 211, 153, 0.15)' };
+    return { name: 'Company Portal', icon: 'business', color: '#34D399', bg: 'rgba(52, 211, 153, 0.15)' };
   }
   if (url.includes('arbeitnow') || url.includes('jobicy') || url.includes('remotive')) {
     return { name: 'Remote Hub', icon: 'globe-outline', color: '#22D3EE', bg: 'rgba(34, 211, 238, 0.15)' };
@@ -105,8 +105,8 @@ interface JobState {
   };
 }
 
-// Convert real career seed jobs from career_pilot.db to initial state items
-const INITIAL_REAL_JOBS: JobApplicationItem[] = REAL_CAREER_SEED_JOBS.slice(0, 45).map((seed, idx) => ({
+// Convert real career seed jobs from career_pilot.db to initial state items (all 140 multi-platform jobs)
+const INITIAL_REAL_JOBS: JobApplicationItem[] = REAL_CAREER_SEED_JOBS.map((seed, idx) => ({
   id: seed.id || `real-job-${idx}`,
   companyName: seed.company,
   role: seed.title,
@@ -127,7 +127,7 @@ export const useJobStore = create<JobState>()(
   persist(
     (set, get) => ({
       myResumeSkills: [],
-      jobs: [],
+      jobs: INITIAL_REAL_JOBS,
       isLoadingLiveJobs: false,
 
       addJob: (jobData) => {
@@ -199,8 +199,12 @@ export const useJobStore = create<JobState>()(
         set({ isLoadingLiveJobs: true });
         try {
           const liveItems = await JobDiscoveryService.fetchLiveJobs(query);
-          const currentJobs = get().jobs;
+          const currentJobs = get().jobs.length > 0 ? get().jobs : INITIAL_REAL_JOBS;
           const currentIds = new Set(currentJobs.map((j) => j.id));
+
+          // Ensure multi-platform seed jobs (LinkedIn, Naukri, Indeed, Foundit, Company Portal) are present
+          const missingSeedJobs = INITIAL_REAL_JOBS.filter((seed) => !currentIds.has(seed.id));
+          missingSeedJobs.forEach((s) => currentIds.add(s.id));
 
           const newFormatted: JobApplicationItem[] = liveItems
             .filter((item) => !currentIds.has(item.id))
@@ -215,18 +219,19 @@ export const useJobStore = create<JobState>()(
               stage: 'wishlist',
               appliedDate: item.appliedDate,
               matchScore: item.matchScore,
+              source: item.source,
               url: item.url,
               tags: item.tags,
               missingSkills: [],
               interviews: [],
             }));
 
-          set((state) => ({
-            jobs: [...newFormatted, ...state.jobs],
+          set({
+            jobs: [...newFormatted, ...missingSeedJobs, ...currentJobs],
             isLoadingLiveJobs: false,
-          }));
+          });
 
-          return newFormatted.length;
+          return newFormatted.length + missingSeedJobs.length;
         } catch (e) {
           console.warn('Failed to refresh live jobs:', e);
           set({ isLoadingLiveJobs: false });

@@ -19,6 +19,8 @@ import { PedometerService } from '@/core/native-bridges/pedometer-adapter';
 import { AIService } from '@/core/utils/ai-service';
 import { useAuthStore } from '@/features/auth/state/auth-store';
 import { VaultSettingsModal } from '@/features/auth/components/VaultSettingsModal';
+import { useSidebarStore } from '@/core/state/sidebar-store';
+import { useEnglishLearningStore } from '@/features/learning/state/english-learning-store';
 import { HabitsCard } from '../components/HabitsCard';
 import { PomodoroTimerModal } from '../components/PomodoroTimerModal';
 import { SecondBrainModal } from '@/features/notes/components/SecondBrainModal';
@@ -57,6 +59,7 @@ export const TodayScreen: React.FC = () => {
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
   const userName = user?.name ? user.name.split(' ')[0] : 'User';
+  const openSidebar = useSidebarStore((s) => s.openSidebar);
 
   const preferredLocations = useCandidateProfileStore((s) => s.preferences.preferredLocations);
   const userCity = preferredLocations && preferredLocations.length > 0 ? preferredLocations[0] : 'Chennai';
@@ -252,6 +255,17 @@ export const TodayScreen: React.FC = () => {
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                openSidebar();
+              }}
+            >
+              <Ionicons name="menu-outline" size={20} color={Colors.textPrimary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.bellButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                 navigation.navigate('Settings');
               }}
             >
@@ -329,8 +343,19 @@ export const TodayScreen: React.FC = () => {
           </GlassCard>
         </View>
 
-        {/* Executive Command Hub (Second Brain, Dump, KeePass, Sunday Reset) */}
+        {/* Executive Command Hub (Second Brain, Dump, KeePass, Sunday Reset, English Guide) */}
         <View style={styles.commandBeltRow}>
+          <TouchableOpacity
+            style={[styles.commandChip, { borderColor: '#38BDF8', backgroundColor: 'rgba(56, 189, 248, 0.12)' }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              useEnglishLearningStore.getState().openModal();
+            }}
+          >
+            <Ionicons name="book" size={14} color="#38BDF8" />
+            <Text style={[styles.commandChipText, { color: '#38BDF8', fontWeight: '800' }]}>English Day 1 🇬🇧</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.commandChip, { borderColor: 'rgba(245, 158, 11, 0.3)', backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}
             onPress={() => {
@@ -375,6 +400,33 @@ export const TodayScreen: React.FC = () => {
             <Text style={[styles.commandChipText, { color: Colors.purple }]}>Sunday Reset</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Daily English Practice Guide Banner */}
+        <TouchableOpacity
+          activeOpacity={0.88}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            useEnglishLearningStore.getState().openModal();
+          }}
+        >
+          <GlassCard variant="elevated" style={styles.englishBannerCard}>
+            <View style={styles.englishBannerRow}>
+              <View style={styles.englishBannerIconBox}>
+                <Ionicons name="book" size={20} color="#38BDF8" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.englishBannerTitle}>English Daily Practice 🇬🇧</Text>
+                  <Badge label="Day 1 Active ⚡" variant="primary" />
+                </View>
+                <Text style={styles.englishBannerSub}>
+                  Day 1: Greetings & Self-Introduction • Visual Image Learning 📸
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+            </View>
+          </GlassCard>
+        </TouchableOpacity>
 
         {/* Next Upcoming Event */}
         {upcomingInterviewJob && upcomingInterviewJob.interviews?.[0] && (
@@ -1068,5 +1120,36 @@ const styles = StyleSheet.create({
   mainFabBtnOpen: {
     backgroundColor: Colors.danger,
     shadowColor: Colors.danger,
+  },
+  englishBannerCard: {
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+  },
+  englishBannerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  englishBannerIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: Radii.md,
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  englishBannerTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  englishBannerSub: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
 });

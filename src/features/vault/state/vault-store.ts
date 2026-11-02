@@ -96,8 +96,11 @@ interface VaultState {
   searchQuery: string;
   selectedGroup: string; // 'all' | 'favorites' | VaultGroup
   autoLockMinutes: number;
+  isModalOpen: boolean;
 
   // Actions
+  openModal: () => void;
+  closeModal: () => void;
   unlockWithPin: (pin: string) => Promise<boolean>;
   unlockWithBiometrics: () => Promise<boolean>;
   lock: () => void;
@@ -121,6 +124,10 @@ export const useVaultStore = create<VaultState>()(
       searchQuery: '',
       selectedGroup: 'all',
       autoLockMinutes: 1,
+      isModalOpen: false,
+
+      openModal: () => set({ isModalOpen: true }),
+      closeModal: () => set({ isModalOpen: false }),
 
       unlockWithPin: async (pin: string) => {
         try {

@@ -34,9 +34,11 @@ import { OutreachGeneratorModal, OutreachType } from '../components/OutreachGene
 import { OfferNegotiatorModal } from '../components/OfferNegotiatorModal';
 import { PreInterviewFlashcardsModal } from '../components/PreInterviewFlashcardsModal';
 import { InterviewRetrospectiveModal } from '../components/InterviewRetrospectiveModal';
+import { CareerFeaturesHubModal } from '../components/CareerFeaturesHubModal';
 import { useAiConfigStore } from '@/core/state/ai-config-store';
 import { AIService } from '@/core/utils/ai-service';
 import { ApiKeyModal } from '@/core/components/ApiKeyModal';
+import { useSidebarStore } from '@/core/state/sidebar-store';
 
 type NavTab = 'Jobs' | 'Tracker';
 
@@ -47,7 +49,7 @@ const PLATFORM_FILTERS = [
   { id: 'Indeed', label: 'Indeed', icon: 'search', color: '#818CF8' },
   { id: 'Foundit', label: 'Foundit', icon: 'flash', color: '#C084FC' },
   { id: 'Handshake', label: 'Handshake', icon: 'hand-right', color: '#FB923C' },
-  { id: 'Company Site', label: 'Company Portal', icon: 'business', color: '#34D399' },
+  { id: 'Company Portal', label: 'Company Portal', icon: 'business', color: '#34D399' },
   { id: 'Remote Hub', label: 'Remote Hub', icon: 'globe-outline', color: '#22D3EE' },
 ];
 
@@ -85,6 +87,8 @@ export const CareerScreen: React.FC = () => {
   const [flashcardsVisible, setFlashcardsVisible] = useState(false);
   const [retroModalVisible, setRetroModalVisible] = useState(false);
   const [selectedJobForRetro, setSelectedJobForRetro] = useState<JobApplicationItem | null>(null);
+  const [featuresHubVisible, setFeaturesHubVisible] = useState(false);
+  const openSidebar = useSidebarStore((s) => s.openSidebar);
 
   // Stores
   const jobs = useJobStore((s) => s.jobs);
@@ -287,6 +291,26 @@ export const CareerScreen: React.FC = () => {
 
           <View style={styles.headerActionsWrap}>
             <TouchableOpacity
+              style={styles.headerMenuBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                openSidebar();
+              }}
+            >
+              <Ionicons name="menu-outline" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.headerHubBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                setFeaturesHubVisible(true);
+              }}
+            >
+              <Ionicons name="apps" size={13} color="#38BDF8" />
+              <Text style={styles.headerHubText}>All Tools (12)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={styles.headerExportBtn}
               onPress={handleExportPipelineCSV}
             >
@@ -337,6 +361,20 @@ export const CareerScreen: React.FC = () => {
           style={styles.toolBeltScroll}
           contentContainerStyle={styles.toolBeltContent}
         >
+          <TouchableOpacity
+            style={[styles.toolChip, styles.allToolsHighlightChip]}
+            activeOpacity={0.8}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setFeaturesHubVisible(true);
+            }}
+          >
+            <Ionicons name="grid" size={14} color="#38BDF8" />
+            <Text style={[styles.toolChipText, { color: '#38BDF8', fontWeight: '800' }]}>
+              🎛️ All Features
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.toolChip}
             activeOpacity={0.8}
@@ -904,6 +942,34 @@ export const CareerScreen: React.FC = () => {
         visible={apiKeyModalVisible}
         onClose={() => setApiKeyModalVisible(false)}
       />
+      <CareerFeaturesHubModal
+        visible={featuresHubVisible}
+        onClose={() => setFeaturesHubVisible(false)}
+        onOpenAddJob={() => setAddJobModalVisible(true)}
+        onOpenFlashcards={() => setFlashcardsVisible(true)}
+        onOpenInterviewRetro={() => {
+          setSelectedJobForRetro(jobs.find((j) => j.stage === 'interview') || jobs[0] || null);
+          setRetroModalVisible(true);
+        }}
+        onOpenAiKey={() => setApiKeyModalVisible(true)}
+        onOpenReferralOutreach={() => {
+          if (jobs.length > 0) {
+            handleOpenOutreach(jobs[0], 'referral_request');
+          } else {
+            Alert.alert('No Jobs', 'Discover or add a job application first.');
+          }
+        }}
+        onOpenOfferNegotiator={() => setOfferNegotiatorVisible(true)}
+        onOpenAtsScanner={() => setAtsModalVisible(true)}
+        onOpenInHandCtc={() => setInHandModalVisible(true)}
+        onOpenAiCoach={() => setCoachModalVisible(true)}
+        onOpenProfile={() => setProfileModalVisible(true)}
+        onOpenPreferences={() => setPreferencesModalVisible(true)}
+        onOpenAnswerBank={() => setAnswerBankModalVisible(true)}
+        onExportCsv={handleExportPipelineCSV}
+        hasAiKey={hasKey}
+        totalJobsCount={jobs.length}
+      />
     </ScreenContainer>
   );
 };
@@ -1294,6 +1360,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  headerMenuBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: Radii.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerHubBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(56, 189, 248, 0.16)',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+    gap: 5,
+  },
+  headerHubText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#38BDF8',
+  },
+  allToolsHighlightChip: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderColor: '#38BDF8',
+    borderWidth: 1.5,
   },
   headerExportBtn: {
     flexDirection: 'row',

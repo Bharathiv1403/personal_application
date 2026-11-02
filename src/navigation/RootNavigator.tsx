@@ -19,6 +19,10 @@ import { ScreenTimeLimitModal } from '@/features/health/components/ScreenTimeLim
 import { useHealthStore } from '@/features/health/state/health-store';
 import { UpdateCheckerService, AppReleaseInfo } from '@/core/services/update-checker';
 import { AppUpdateModal } from '@/core/components/AppUpdateModal';
+import { AppSidebarDrawer } from '@/core/components/AppSidebarDrawer';
+import { EnglishLearningModal } from '@/features/learning/components/EnglishLearningModal';
+import { SmartMessageWriterModal } from '@/features/career/components/SmartMessageWriterModal';
+import { KeePassVaultModal } from '@/features/vault/components/KeePassVaultModal';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -134,6 +138,10 @@ export const RootNavigator: React.FC = () => {
             </>
           )}
         </Stack.Navigator>
+        <AppSidebarDrawer />
+        <EnglishLearningModal />
+        <SmartMessageWriterModal />
+        <KeePassVaultModal />
       </NavigationContainer>
 
       {/* Persistent Security Lock Overlay: Keeps MainTabs & all typed input values 100% preserved */}

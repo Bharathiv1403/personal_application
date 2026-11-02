@@ -24,8 +24,8 @@ import { VaultAuditModal } from './VaultAuditModal';
 import { AddEditVaultEntryModal } from './AddEditVaultEntryModal';
 
 interface KeePassVaultModalProps {
-  visible: boolean;
-  onClose: () => void;
+  visible?: boolean;
+  onClose?: () => void;
 }
 
 const GROUP_FILTERS: { key: VaultGroup | 'all' | 'favorites'; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -40,6 +40,11 @@ const GROUP_FILTERS: { key: VaultGroup | 'all' | 'favorites'; label: string; ico
 ];
 
 export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, onClose }) => {
+  const isStoreModalOpen = useVaultStore((s) => s.isModalOpen);
+  const closeStoreModal = useVaultStore((s) => s.closeModal);
+  const isModalVisible = visible !== undefined ? visible : isStoreModalOpen;
+  const handleModalClose = onClose || closeStoreModal;
+
   const {
     entries,
     isUnlocked,
@@ -69,19 +74,19 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
   const [ticker, setTicker] = useState(0);
 
   useEffect(() => {
-    if (!visible || !isUnlocked) return;
+    if (!isModalVisible || !isUnlocked) return;
     const interval = setInterval(() => {
       setTicker((t) => t + 1);
     }, 1000);
     return () => clearInterval(interval);
-  }, [visible, isUnlocked]);
+  }, [isModalVisible, isUnlocked]);
 
   // Attempt biometric unlock on open
   useEffect(() => {
-    if (visible && !isUnlocked) {
+    if (isModalVisible && !isUnlocked) {
       unlockWithBiometrics();
     }
-  }, [visible, isUnlocked]);
+  }, [isModalVisible, isUnlocked]);
 
   // PIN Unlock submit
   const handlePinUnlock = async () => {
@@ -308,7 +313,7 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
   const auditReport = useMemo(() => VaultCryptoService.auditVault(entries), [entries]);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={isModalVisible} animationType="slide" transparent onRequestClose={handleModalClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           {/* Header */}
@@ -337,7 +342,7 @@ export const KeePassVaultModal: React.FC<KeePassVaultModalProps> = ({ visible, o
               )}
               <TouchableOpacity
                 style={styles.closeBtn}
-                onPress={onClose}
+                onPress={handleModalClose}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Ionicons name="close" size={22} color="#94A3B8" />

@@ -42,6 +42,7 @@ export class GoogleAuthService {
           redirectUri,
           scopes: ['openid', 'profile', 'email'],
           responseType: AuthSession.ResponseType.Token,
+          usePKCE: false,
           extraParams: {
             prompt: 'select_account',
           },

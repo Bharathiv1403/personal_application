@@ -807,4 +807,120 @@ Tone: Extremely polite, enthusiastic about joining, confident in business value,
 
     return letter || fallbackLetter;
   }
+
+  /**
+   * 8. Visual Everyday Object Detection & Mother Tongue Translation
+   */
+  static async detectVisualObject(hint?: string): Promise<{
+    english: string;
+    tamil: string;
+    phonetic: string;
+    englishSentence: string;
+    tamilSentence: string;
+  }> {
+    const commonObjects = [
+      {
+        english: 'Coffee Mug',
+        tamil: 'காபி கோப்பை',
+        phonetic: 'KAA-fee muhg',
+        englishSentence: 'I enjoy drinking hot coffee from my mug in the morning.',
+        tamilSentence: 'நான் காலையில் எனது கோப்பையில் சூடான காபி குடிக்க விரும்புகிறேன்.',
+      },
+      {
+        english: 'Laptop Computer',
+        tamil: 'மடிக்கணினி',
+        phonetic: 'LAP-top kuhm-PYOO-ter',
+        englishSentence: 'He uses his laptop for office work and study.',
+        tamilSentence: 'அவர் அலுவலக வேலைக்கும் படிப்புக்கும் தனது மடிக்கணினியைப் பயன்படுத்துகிறார்.',
+      },
+      {
+        english: 'Water Bottle',
+        tamil: 'தண்ணீர் பாட்டில்',
+        phonetic: 'WAH-ter BAH-tuhl',
+        englishSentence: 'Carry a water bottle to stay hydrated during travel.',
+        tamilSentence: 'பயணத்தின் போது உடலை நீரேற்றமாக வைத்திருக்க தண்ணீர் பாட்டிலை எடுத்துச் செல்லுங்கள்.',
+      },
+      {
+        english: 'Wristwatch',
+        tamil: 'கைக்கடிகாரம்',
+        phonetic: 'RIST-wahch',
+        englishSentence: 'Checking your wristwatch helps you arrive on time.',
+        tamilSentence: 'கைக்கடிகாரத்தைப் பார்ப்பது சரியான நேரத்திற்கு சென்றடைய உதவும்.',
+      },
+      {
+        english: 'Smartphone',
+        tamil: 'திறன்பேசி (ஸ்மார்ட்போன்)',
+        phonetic: 'SMAHRT-fohn',
+        englishSentence: 'I use my smartphone to learn new English words daily.',
+        tamilSentence: 'தினமும் புதிய ஆங்கில வார்த்தைகளைக் கற்க எனது ஸ்மார்ட்போனைப் பயன்படுத்துகிறேன்.',
+      },
+      {
+        english: 'Backpack',
+        tamil: 'முதுகுப்பை (பேக்)',
+        phonetic: 'BAK-pak',
+        englishSentence: 'Pack your books and water bottle in the backpack.',
+        tamilSentence: 'உங்கள் புத்தகங்களையும் தண்ணீர் பாட்டிலையும் பையில் வையுங்கள்.',
+      },
+    ];
+
+    const fallback = commonObjects[Math.floor(Math.random() * commonObjects.length)];
+
+    if (this.getConfiguredProviders().length === 0) {
+      return fallback;
+    }
+
+    try {
+      const prompt = `Identify a real-world object photographed by a user${hint ? ` (Hint: ${hint})` : ''}.
+Provide the name in Learning Language (English) and Mother Language (Tamil - தமிழ்).
+Output ONLY valid JSON in this exact structure with NO markdown formatting:
+{
+  "english": "Water Bottle",
+  "tamil": "தண்ணீர் பாட்டில்",
+  "phonetic": "WAH-ter BAH-tuhl",
+  "englishSentence": "Drink clean water from your bottle.",
+  "tamilSentence": "உங்கள் பாட்டிலில் இருந்து சுத்தமான தண்ணீரைக் குடியுங்கள்."
+}`;
+
+      const res = await this.queryLLM({
+        userPrompt: prompt,
+        maxTokens: 250,
+      });
+
+      if (res) {
+        const clean = res.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(clean);
+        if (parsed.english && parsed.tamil) {
+          return {
+            english: parsed.english,
+            tamil: parsed.tamil,
+            phonetic: parsed.phonetic || parsed.english,
+            englishSentence: parsed.englishSentence || `This is a ${parsed.english}.`,
+            tamilSentence: parsed.tamilSentence || `இது ஒரு ${parsed.tamil}.`,
+          };
+        }
+      }
+    } catch {}
+
+    return fallback;
+  }
+
+  static async translateText(
+    text: string,
+    direction: 'en-to-ta' | 'ta-to-en'
+  ): Promise<string | null> {
+    try {
+      const systemPrompt =
+        direction === 'en-to-ta'
+          ? 'You are an accurate English to Tamil translator. Translate the given English text to natural Tamil (தமிழ்). Output ONLY the direct translation without quotes or extra words.'
+          : 'You are an accurate Tamil to English translator. Translate the given Tamil text to fluent English. Output ONLY the direct translation without quotes or extra words.';
+
+      return await this.queryLLM({
+        systemPrompt,
+        userPrompt: text,
+        maxTokens: 300,
+      });
+    } catch {
+      return null;
+    }
+  }
 }
