@@ -260,7 +260,7 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
                 size={15}
                 color={activeTab === 'history' ? '#FFFFFF' : Colors.textMuted}
               />
-              <Text style={[styles.tabBtnText, activeTab === 'history' && styles.tabBtnTextActive]}>
+              <Text style={[styles.tabBtnText, activeTab === 'history' && styles.tabBtnTextActive]} numberOfLines={1}>
                 Month Expenses ({monthExpenses.length})
               </Text>
             </TouchableOpacity>
@@ -270,7 +270,7 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
             {/* SALARY & IN-HAND LIVE CASHFLOW CARD */}
             <View style={styles.salaryCard}>
               <View style={styles.salaryCardTop}>
-                <View>
+                <View style={{ flex: 1, marginRight: 8 }}>
                   <Text style={styles.salaryLabel}>Monthly Salary Budget</Text>
                   {isEditingSalary ? (
                     <View style={styles.salaryInputRow}>
