@@ -44,3 +44,5 @@ Document/*.json
 # generated native folders
 /ios
 /android
+*.apk
+build-output/

@@ -3,13 +3,28 @@ import { Platform } from 'react-native';
 
 // Configure how notifications appear when app is foregrounded
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) => {
+    // Prevent blank notifications with empty content from displaying
+    const title = notification.request.content.title?.trim();
+    const body = notification.request.content.body?.trim();
+    if (!title && !body) {
+      return {
+        shouldShowAlert: false,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+        shouldShowBanner: false,
+        shouldShowList: false,
+      };
+    }
+
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    };
+  },
 });
 
 export class NotificationService {
@@ -257,6 +272,14 @@ export class NotificationService {
   static async showStepTrackerNotification(steps: number, goal: number): Promise<void> {
     if (Platform.OS !== 'android') return;
     try {
+      await Notifications.setNotificationChannelAsync('step_tracker_service', {
+        name: 'Active Step Tracker',
+        importance: Notifications.AndroidImportance.LOW,
+        vibrationPattern: [0],
+        enableVibrate: false,
+        showBadge: false,
+      }).catch(() => {});
+
       const percent = Math.min(100, Math.round((steps / (goal || 10000)) * 100));
       await Notifications.scheduleNotificationAsync({
         identifier: 'aayon_step_tracker_ongoing',
@@ -280,21 +303,10 @@ export class NotificationService {
   }
 
   /**
-   * Remove background step tracker notification
+   * Remove background step tracker notification cleanly without scheduling empty dummy notifications
    */
   static async cancelStepTrackerNotification(): Promise<void> {
     try {
-      // Clear sticky flag first in case Android OS cached the ongoing flag
-      await Notifications.scheduleNotificationAsync({
-        identifier: 'aayon_step_tracker_ongoing',
-        content: {
-          title: '',
-          body: '',
-          sticky: false,
-          autoDismiss: true,
-        },
-        trigger: null,
-      }).catch(() => {});
       await Notifications.dismissNotificationAsync('aayon_step_tracker_ongoing').catch(() => {});
       await Notifications.cancelScheduledNotificationAsync('aayon_step_tracker_ongoing').catch(() => {});
     } catch {
