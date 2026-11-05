@@ -65,17 +65,9 @@ export const AutoApplyPreviewModal: React.FC<Props> = ({
     onApplied(job.id);
     onClose();
 
-    if (job.url) {
-      try {
-        await WebBrowser.openBrowserAsync(job.url);
-      } catch {
-        await Linking.openURL(job.url);
-      }
-    }
-
     Alert.alert(
       'Application Form Launched 🚀',
-      `Auto-filled profile ready. Application for ${job.companyName} has been moved to your "Applied" tracker!`
+      `Auto-filled profile ready. Application for ${job.companyName} has been opened and moved to your "Applied" tracker!`
     );
   };
 

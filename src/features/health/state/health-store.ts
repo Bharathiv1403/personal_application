@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NotificationService } from '@/core/utils/notification-service';
 
 export interface DayStepData {
   date: string; // YYYY-MM-DD
@@ -41,6 +42,7 @@ interface HealthState {
   // Steps & Movement
   todaySteps: number;
   stepGoal: number;
+  isStepNotificationEnabled: boolean;
   lastTrackedDate: string; // YYYY-MM-DD
   weeklyStepsHistory: DayStepData[];
   monthStepsHistory: DayStepData[];
@@ -78,6 +80,7 @@ interface HealthState {
   setTodaySteps: (totalSteps: number) => void;
   manuallyAdjustSteps: (totalSteps: number) => void;
   setStepGoal: (goal: number) => void;
+  setStepNotificationEnabled: (enabled: boolean) => void;
   addWater: (amountMl: number) => void;
   resetDailyWater: () => void;
   logSleep: (hours: number, quality: 'Restful' | 'Good' | 'Disturbed', bed: string, wake: string) => void;
@@ -185,6 +188,7 @@ export const useHealthStore = create<HealthState>()(
       return {
         todaySteps: initialSteps,
         stepGoal: 10000,
+        isStepNotificationEnabled: false,
         lastTrackedDate: todayStr,
         weeklyStepsHistory: generateInitialWeekDays(),
         monthStepsHistory: generateInitialMonthDays(),
@@ -219,18 +223,15 @@ export const useHealthStore = create<HealthState>()(
             const weekHistory = generateInitialWeekDays(get().weeklyStepsHistory);
             const monthHistory = generateInitialMonthDays(get().monthStepsHistory);
 
-            if (weekHistory.length >= 2) {
-              const yesterdayDate = weekHistory[weekHistory.length - 2].date;
-              if (lastDay === yesterdayDate) {
-                weekHistory[weekHistory.length - 2].steps = get().todaySteps;
-              }
+            // Save the last tracked day's accumulated steps into its exact matching date slot across multi-day gaps
+            const targetWeekDay = weekHistory.find((w) => w.date === lastDay);
+            if (targetWeekDay) {
+              targetWeekDay.steps = get().todaySteps;
             }
 
-            if (monthHistory.length >= 2) {
-              const yesterdayDate = monthHistory[monthHistory.length - 2].date;
-              if (lastDay === yesterdayDate) {
-                monthHistory[monthHistory.length - 2].steps = get().todaySteps;
-              }
+            const targetMonthDay = monthHistory.find((m) => m.date === lastDay);
+            if (targetMonthDay) {
+              targetMonthDay.steps = get().todaySteps;
             }
 
             set({
@@ -301,6 +302,16 @@ export const useHealthStore = create<HealthState>()(
         },
 
         setStepGoal: (goal) => set({ stepGoal: goal }),
+
+        setStepNotificationEnabled: (enabled: boolean) => {
+          set({ isStepNotificationEnabled: enabled });
+          if (!enabled) {
+            NotificationService.cancelStepTrackerNotification();
+          } else {
+            const s = get();
+            NotificationService.showStepTrackerNotification(s.todaySteps, s.stepGoal);
+          }
+        },
 
         addWater: (amount) => {
           get().checkAndResetDay();
@@ -462,6 +473,9 @@ export const useHealthStore = create<HealthState>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.checkAndResetDay();
+          if (!state.isStepNotificationEnabled) {
+            NotificationService.cancelStepTrackerNotification();
+          }
         }
       },
     }

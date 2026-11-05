@@ -318,8 +318,8 @@ export interface WealthState {
     monthlyRatePercent: number;
     dueDayOfMonth: number;
   }) => void;
-  payMonthlyVatti: (loanId: string, amount?: number) => void;
-  partRepayPrincipal: (loanId: string, amount: number) => void;
+  payMonthlyVatti: (loanId: string, amount?: number, accountId?: string) => void;
+  partRepayPrincipal: (loanId: string, amount: number, accountId?: string) => void;
   deleteLoan: (loanId: string) => void;
   addGoldItem: (item: Omit<GoldHolding, 'id' | 'sovereigns'>) => void;
   deleteGoldItem: (id: string) => void;
@@ -723,18 +723,27 @@ export const useWealthStore = create<WealthState>()(
         set((state) => ({ loans: [newLoan, ...state.loans] }));
       },
 
-      payMonthlyVatti: (loanId, customAmount) => {
-        set((state) => ({
-          loans: state.loans.map((loan) => {
+      payMonthlyVatti: (loanId, customAmount, accountId) => {
+        set((state) => {
+          const targetLoan = state.loans.find((l) => l.id === loanId);
+          if (!targetLoan) return state;
+
+          const amountToPay = customAmount || targetLoan.monthlyInterestAmount;
+          const targetAccountId =
+            accountId ||
+            state.accounts.find((a) => a.type === 'cash' || a.type === 'bank' || a.type === 'wallet')?.id ||
+            state.accounts[0]?.id ||
+            'acc-cash';
+
+          const updatedLoans = state.loans.map((loan) => {
             if (loan.id !== loanId) return loan;
-            const amountToPay = customAmount || loan.monthlyInterestAmount;
             return {
               ...loan,
               lifetimeInterestPaid: loan.lifetimeInterestPaid + amountToPay,
               history: [
                 {
                   id: `pay-${Date.now()}`,
-                  type: 'interest',
+                  type: 'interest' as const,
                   amount: amountToPay,
                   date: new Date().toISOString().slice(0, 10),
                   note: `Paid monthly interest for ${new Date().toLocaleString('default', { month: 'short' })}`,
@@ -742,28 +751,70 @@ export const useWealthStore = create<WealthState>()(
                 ...loan.history,
               ],
             };
-          }),
-        }));
+          });
+
+          // Deduct from bank/cash account
+          const updatedAccounts = state.accounts.map((acc) => {
+            if (acc.id === targetAccountId) {
+              const newBal =
+                acc.type === 'credit_card'
+                  ? acc.balance + amountToPay
+                  : acc.balance - amountToPay;
+              return { ...acc, balance: newBal };
+            }
+            return acc;
+          });
+
+          // Create expense transaction so it reflects in Monthly Budget & Net Savings
+          const newTx: Transaction = {
+            id: `tx-vatti-${Date.now()}`,
+            type: 'expense',
+            title: `Monthly Vatti Paid: ${targetLoan.lenderName}`,
+            description: `Monthly interest payment on loan of ₹${targetLoan.principalAmount.toLocaleString('en-IN')}`,
+            amount: amountToPay,
+            categoryId: 'emi_loans',
+            accountId: targetAccountId,
+            date: new Date().toISOString().slice(0, 10),
+            paymentMethod: 'Net Banking',
+            createdAt: new Date().toISOString(),
+          };
+
+          return {
+            loans: updatedLoans,
+            accounts: updatedAccounts,
+            transactions: [newTx, ...state.transactions],
+          };
+        });
       },
 
-      partRepayPrincipal: (loanId, partPaymentAmount) => {
-        set((state) => ({
-          loans: state.loans.map((loan) => {
+      partRepayPrincipal: (loanId, partPaymentAmount, accountId) => {
+        set((state) => {
+          const targetLoan = state.loans.find((l) => l.id === loanId);
+          if (!targetLoan) return state;
+
+          const targetAccountId =
+            accountId ||
+            state.accounts.find((a) => a.type === 'cash' || a.type === 'bank' || a.type === 'wallet')?.id ||
+            state.accounts[0]?.id ||
+            'acc-cash';
+
+          const { newPrincipal, newMonthlyInterest } = recalculateAfterPartPayment(
+            targetLoan.principalAmount,
+            partPaymentAmount,
+            targetLoan.monthlyRatePercent
+          );
+
+          const updatedLoans = state.loans.map((loan) => {
             if (loan.id !== loanId) return loan;
-            const { newPrincipal, newMonthlyInterest } = recalculateAfterPartPayment(
-              loan.principalAmount,
-              partPaymentAmount,
-              loan.monthlyRatePercent
-            );
             return {
               ...loan,
               principalAmount: newPrincipal,
               monthlyInterestAmount: newMonthlyInterest,
-              status: newPrincipal <= 0 ? 'settled' : 'active',
+              status: newPrincipal <= 0 ? ('settled' as const) : ('active' as const),
               history: [
                 {
                   id: `part-${Date.now()}`,
-                  type: 'principal',
+                  type: 'principal' as const,
                   amount: partPaymentAmount,
                   date: new Date().toISOString().slice(0, 10),
                   note: `Principal Repayment. Remaining: ₹${newPrincipal.toLocaleString('en-IN')}`,
@@ -771,8 +822,40 @@ export const useWealthStore = create<WealthState>()(
                 ...loan.history,
               ],
             };
-          }),
-        }));
+          });
+
+          // Deduct from bank/cash account
+          const updatedAccounts = state.accounts.map((acc) => {
+            if (acc.id === targetAccountId) {
+              const newBal =
+                acc.type === 'credit_card'
+                  ? acc.balance + partPaymentAmount
+                  : acc.balance - partPaymentAmount;
+              return { ...acc, balance: newBal };
+            }
+            return acc;
+          });
+
+          // Create expense transaction so it reflects in Monthly Budget & Net Savings
+          const newTx: Transaction = {
+            id: `tx-part-${Date.now()}`,
+            type: 'expense',
+            title: `Principal Part Repayment: ${targetLoan.lenderName}`,
+            description: `Part principal payment. Remaining principal: ₹${newPrincipal.toLocaleString('en-IN')}`,
+            amount: partPaymentAmount,
+            categoryId: 'emi_loans',
+            accountId: targetAccountId,
+            date: new Date().toISOString().slice(0, 10),
+            paymentMethod: 'Net Banking',
+            createdAt: new Date().toISOString(),
+          };
+
+          return {
+            loans: updatedLoans,
+            accounts: updatedAccounts,
+            transactions: [newTx, ...state.transactions],
+          };
+        });
       },
 
       deleteLoan: (loanId) => {

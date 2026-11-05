@@ -25,8 +25,12 @@ interface PartRepayModalProps {
 
 export const PartRepayModal: React.FC<PartRepayModalProps> = ({ visible, loan, onClose }) => {
   const partRepayPrincipal = useWealthStore((s) => s.partRepayPrincipal);
+  const accounts = useWealthStore((s) => s.accounts);
 
   const [amountText, setAmountText] = useState('50000');
+  const [selectedAccountId, setSelectedAccountId] = useState(
+    accounts.find((a) => a.type === 'cash' || a.type === 'bank' || a.type === 'wallet')?.id || accounts[0]?.id || 'acc-cash'
+  );
   const repayAmount = parseFloat(amountText) || 0;
 
   if (!loan) return null;
@@ -41,7 +45,7 @@ export const PartRepayModal: React.FC<PartRepayModalProps> = ({ visible, loan, o
     if (repayAmount <= 0) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
-    partRepayPrincipal(loan.id, repayAmount);
+    partRepayPrincipal(loan.id, repayAmount, selectedAccountId);
     setAmountText('');
     onClose();
   };
@@ -122,6 +126,32 @@ export const PartRepayModal: React.FC<PartRepayModalProps> = ({ visible, loan, o
               💡 You will save{' '}
               {formatINR(loan.monthlyInterestAmount - newMonthlyInterest)} in interest every month!
             </Text>
+          </View>
+
+          {/* Deduct From Account */}
+          <View style={[styles.formGroup, { marginTop: Spacing.sm }]}>
+            <Text style={styles.inputLabel}>Deduct From Account</Text>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              {accounts.map((acc) => {
+                const isSelected = selectedAccountId === acc.id;
+                return (
+                  <TouchableOpacity
+                    key={acc.id}
+                    onPress={() => setSelectedAccountId(acc.id)}
+                    style={[styles.accountChip, isSelected && styles.accountChipSelected]}
+                  >
+                    <Ionicons
+                      name={isSelected ? 'radio-button-on' : 'radio-button-off'}
+                      size={13}
+                      color={isSelected ? Colors.primary : Colors.textMuted}
+                    />
+                    <Text style={[styles.accountChipText, isSelected && styles.accountChipTextSelected]}>
+                      {acc.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
           {/* Confirm Button */}
@@ -287,5 +317,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.textInverse,
+  },
+  accountChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: Radii.md,
+    backgroundColor: Colors.cardSubtle,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  accountChipSelected: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: Colors.primary,
+  },
+  accountChipText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  accountChipTextSelected: {
+    color: Colors.textPrimary,
+    fontWeight: '700',
   },
 });

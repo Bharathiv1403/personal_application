@@ -23,6 +23,7 @@ import { AppSidebarDrawer } from '@/core/components/AppSidebarDrawer';
 import { EnglishLearningModal } from '@/features/learning/components/EnglishLearningModal';
 import { SmartMessageWriterModal } from '@/features/career/components/SmartMessageWriterModal';
 import { KeePassVaultModal } from '@/features/vault/components/KeePassVaultModal';
+import { TamilCalendarSheetModal } from '@/features/calendar/components/TamilCalendarSheetModal';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -142,6 +143,7 @@ export const RootNavigator: React.FC = () => {
         <EnglishLearningModal />
         <SmartMessageWriterModal />
         <KeePassVaultModal />
+        <TamilCalendarSheetModal />
       </NavigationContainer>
 
       {/* Persistent Security Lock Overlay: Keeps MainTabs & all typed input values 100% preserved */}

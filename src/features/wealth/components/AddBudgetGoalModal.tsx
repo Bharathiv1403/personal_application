@@ -37,26 +37,28 @@ const QUICK_TEMPLATES = [
 export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
   const [activeTab, setActiveTab] = useState<'log' | 'history'>('log');
 
-  // Salary state
-  const monthlySalary = useWealthStore((s) => s.monthlySalary);
-  const setMonthlySalary = useWealthStore((s) => s.setMonthlySalary);
-  const [salaryInput, setSalaryInput] = useState('');
-  const [isEditingSalary, setIsEditingSalary] = useState(false);
-  const [creditSalaryToAccount, setCreditSalaryToAccount] = useState(false);
-  const [selectedSalaryAccountId, setSelectedSalaryAccountId] = useState('');
-
-  // Expense form state
-  const [expenseTitle, setExpenseTitle] = useState('');
-  const [expenseAmount, setExpenseAmount] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState('food');
-  const [selectedAccountId, setSelectedAccountId] = useState('');
-
   // Store data
   const accounts = useWealthStore((s) => s.accounts);
   const categories = useWealthStore((s) => s.categories);
   const transactions = useWealthStore((s) => s.transactions);
   const addTransaction = useWealthStore((s) => s.addTransaction);
   const deleteTransaction = useWealthStore((s) => s.deleteTransaction);
+
+  const defaultAccount = accounts[0]?.id || 'acc-cash';
+
+  // Salary state
+  const monthlySalary = useWealthStore((s) => s.monthlySalary);
+  const setMonthlySalary = useWealthStore((s) => s.setMonthlySalary);
+  const [salaryInput, setSalaryInput] = useState('');
+  const [isEditingSalary, setIsEditingSalary] = useState(false);
+  const [creditSalaryToAccount, setCreditSalaryToAccount] = useState(false);
+  const [selectedSalaryAccountId, setSelectedSalaryAccountId] = useState(defaultAccount);
+
+  // Expense form state
+  const [expenseTitle, setExpenseTitle] = useState('');
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('food');
+  const [selectedAccountId, setSelectedAccountId] = useState(defaultAccount);
 
   const currentMonthKey = useMemo(() => new Date().toISOString().slice(0, 7), []);
   const currentMonthName = useMemo(() => {
@@ -168,10 +170,7 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
       return;
     }
 
-    if (!selectedAccountId) {
-      Alert.alert('Select Account', 'Please select an account for this payment.');
-      return;
-    }
+    const effectiveAccountId = selectedAccountId || accounts[0]?.id || 'acc-cash';
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
@@ -180,7 +179,7 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
       title: expenseTitle.trim(),
       amount: numAmount,
       categoryId: selectedCategoryId,
-      accountId: selectedAccountId,
+      accountId: effectiveAccountId,
       date: new Date().toISOString().slice(0, 10),
       paymentMethod: 'UPI',
     });

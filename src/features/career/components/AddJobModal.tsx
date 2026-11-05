@@ -15,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
 import { useJobStore, JobStage } from '../state/job-store';
+import { JobLivenessService, LivenessResult, GhostAnalysisResult } from '@/core/services/job-liveness-service';
 
 interface AddJobModalProps {
   visible: boolean;
@@ -45,6 +46,28 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) =>
   const [stage, setStage] = useState<JobStage>('applied');
   const [recruiterName, setRecruiterName] = useState('');
   const [jdText, setJdText] = useState('');
+
+  // Liveness & Ghost Verification State (from career-ops engine)
+  const [isCheckingLiveness, setIsCheckingLiveness] = useState(false);
+  const [livenessResult, setLivenessResult] = useState<LivenessResult | null>(null);
+  const [ghostResult, setGhostResult] = useState<GhostAnalysisResult | null>(null);
+
+  const handleVerifyLink = async () => {
+    if (!jobUrl.trim()) return;
+    setIsCheckingLiveness(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      const liveRes = await JobLivenessService.verifyUrlLiveness(jobUrl);
+      setLivenessResult(liveRes);
+      const ghostRes = JobLivenessService.analyzeGhostSignals(role, company, jdText);
+      setGhostResult(ghostRes);
+      Haptics.notificationAsync(
+        liveRes.isLive ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning
+      ).catch(() => {});
+    } finally {
+      setIsCheckingLiveness(false);
+    }
+  };
 
   const handleSave = () => {
     if (!company.trim()) return;
@@ -148,15 +171,74 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) =>
 
             {/* Job Posting Link */}
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Job Posting URL (Optional)</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs }}>
+                <Text style={styles.inputLabel}>Job Posting URL (Optional)</Text>
+                {jobUrl.trim().length > 0 && (
+                  <TouchableOpacity
+                    onPress={handleVerifyLink}
+                    disabled={isCheckingLiveness}
+                    style={styles.verifyLinkBtn}
+                  >
+                    <Ionicons
+                      name={isCheckingLiveness ? 'refresh' : 'flash-outline'}
+                      size={12}
+                      color="#38BDF8"
+                    />
+                    <Text style={styles.verifyLinkText}>
+                      {isCheckingLiveness ? 'Checking...' : 'Check Liveness ⚡'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               <TextInput
                 style={styles.input}
-                placeholder="https://www.linkedin.com/jobs/view/..."
+                placeholder="https://job-boards.greenhouse.io/... or https://jobs.lever.co/..."
                 placeholderTextColor={Colors.textMuted}
                 value={jobUrl}
-                onChangeText={setJobUrl}
+                onChangeText={(txt) => {
+                  setJobUrl(txt);
+                  setLivenessResult(null);
+                  setGhostResult(null);
+                }}
                 autoCapitalize="none"
               />
+
+              {/* Liveness & Ghost Verification Pill Banner */}
+              {livenessResult && (
+                <View style={[
+                  styles.livenessBanner,
+                  livenessResult.isLive ? styles.livenessLive : styles.livenessDead
+                ]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons
+                      name={livenessResult.isLive ? 'checkmark-circle' : 'alert-circle'}
+                      size={15}
+                      color={livenessResult.isLive ? '#34D399' : '#EF4444'}
+                    />
+                    <Text style={[styles.livenessTitle, { color: livenessResult.isLive ? '#34D399' : '#EF4444' }]}>
+                      {livenessResult.statusText}
+                    </Text>
+                  </View>
+
+                  {ghostResult && (
+                    <View style={styles.ghostMetaRow}>
+                      <View style={[
+                        styles.ghostTierBadge,
+                        ghostResult.tier === 'High Confidence'
+                          ? styles.tierHigh
+                          : ghostResult.tier === 'Proceed with Caution'
+                          ? styles.tierCaution
+                          : styles.tierSuspicious
+                      ]}>
+                        <Text style={styles.ghostTierText}>
+                          {ghostResult.tier} (Trust: {ghostResult.trustScore}%)
+                        </Text>
+                      </View>
+                      <Text style={styles.ghostRecText}>{ghostResult.recommendation}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
 
             {/* Work Mode */}
@@ -406,5 +488,71 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.textInverse,
+  },
+  verifyLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radii.full,
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
+  },
+  verifyLinkText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#38BDF8',
+  },
+  livenessBanner: {
+    marginTop: 8,
+    padding: 10,
+    borderRadius: Radii.md,
+    borderWidth: 1,
+  },
+  livenessLive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  livenessDead: {
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  livenessTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  ghostMetaRow: {
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  ghostTierBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  tierHigh: {
+    backgroundColor: 'rgba(52, 211, 153, 0.18)',
+  },
+  tierCaution: {
+    backgroundColor: 'rgba(251, 191, 36, 0.18)',
+  },
+  tierSuspicious: {
+    backgroundColor: 'rgba(239, 68, 68, 0.18)',
+  },
+  ghostTierText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  ghostRecText: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    lineHeight: 15,
   },
 });

@@ -19,6 +19,7 @@ import { ApiKeyModal } from '@/core/components/ApiKeyModal';
 import { PreInterviewFlashcardsModal } from '@/features/career/components/PreInterviewFlashcardsModal';
 import { SundayResetModal } from '@/features/today/components/SundayResetModal';
 import { SecondBrainModal } from '@/features/notes/components/SecondBrainModal';
+import { ActionAgentEngine } from '../services/action-agent-engine';
 
 export const AgentScreen: React.FC = () => {
   const [input, setInput] = useState('');
@@ -52,7 +53,7 @@ export const AgentScreen: React.FC = () => {
   const defaultWelcomeMsg: ChatMessage = {
     id: '1',
     sender: 'agent',
-    text: `${getGreeting()} ${userName}! I am AAYON, your AI Executive Copilot. I'm connected to your live health, career pipeline, and financial records. How can I help you excel today?`,
+    text: `${getGreeting()} ${userName}! I am AAYON, your autonomous AI Action Copilot ⚡\n\nYou can command me in English or Tamil to:\n• Log expenses (e.g. "₹150 tea", "250 biryani")\n• Log water (e.g. "500ml water குடிச்சேன்")\n• Schedule tasks (e.g. "Add task: Finish mobile feature")\n• Check Tamil good time (e.g. "இன்றைய நல்ல நேரம்")\n• Search jobs (e.g. "Chennai React jobs")\n• Summarize your day (e.g. "Daily briefing")\n\nWhat would you like me to do for you right now?`,
   };
 
   const [messages, setMessages] = useState<ChatMessage[]>([defaultWelcomeMsg]);
@@ -119,141 +120,63 @@ export const AgentScreen: React.FC = () => {
 
     const lower = messageToSend.toLowerCase();
 
-    // Tool 1: 10-Min Flashcards
+    // UI Modal Triggers
     if (lower.includes('flashcard') || lower.includes('flash cards')) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setFlashcardsVisible(true);
       const replyMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'agent',
-        text: '⚡ Launching your 10-Minute Pre-Interview High-Yield Technical Flashcards now! Review React Native architecture, JS event loop, and system design patterns.',
+        text: '⚡ Launching your 10-Minute Pre-Interview High-Yield Technical Flashcards now!',
       };
       persistMessages([...updatedWithUser, replyMsg]);
       return;
     }
 
-    // Tool 2: Sunday Reset
     if (lower.includes('sunday reset') || lower.includes('weekly review') || lower.includes('retrospective')) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setSundayResetVisible(true);
       const replyMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'agent',
-        text: '🕯️ Opening your Sunday Reset ritual. Let’s review your scorecard, reflect on breakthroughs, and set your 3 critical priorities for the week ahead.',
+        text: '🕯️ Opening your Sunday Reset ritual. Let’s review your scorecard and set your critical weekly priorities.',
       };
       persistMessages([...updatedWithUser, replyMsg]);
       return;
     }
 
-    // Tool 3: Second Brain / Notes Vault
-    if (lower.includes('second brain') || lower.includes('open notes') || lower.includes('code snippet') || lower.includes('read later')) {
+    if (lower.includes('second brain') || lower.includes('open notes')) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setSecondBrainVisible(true);
       const replyMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'agent',
-        text: '📝 Opening your Second Brain & Developer Vault. You can search notes, copy snippets, and manage read-later bookmarks.',
+        text: '📝 Opening your Second Brain & Developer Vault.',
       };
       persistMessages([...updatedWithUser, replyMsg]);
-      return;
-    }
-
-    // Tool 4: Hydration Logging
-    const waterMatch = lower.match(/(?:log|drink|add)\s*(?:water)?\s*(\d+)\s*(?:ml)?/i);
-    if (waterMatch) {
-      const ml = parseInt(waterMatch[1], 10);
-      if (ml > 0) {
-        useHealthStore.getState().addWater(ml);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-        const replyMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: 'agent',
-          text: `💧 Hydration Logged! Added ${ml}ml to your daily water intake. Current total: ${useHealthStore.getState().waterIntakeMl}ml. Keep staying hydrated!`,
-        };
-        persistMessages([...updatedWithUser, replyMsg]);
-        return;
-      }
-    }
-
-    // Tool 5: Quick Task Creation
-    const taskMatch = messageToSend.match(/(?:add|create|new)\s*task:?\s*(.+)/i) || messageToSend.match(/(?:remind me to|todo:?)\s*(.+)/i);
-    if (taskMatch) {
-      const taskTitle = taskMatch[1].trim();
-      useTodoStore.getState().addTodo({
-        title: taskTitle,
-        category: 'Work',
-        priority: 'high',
-      });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      const replyMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'agent',
-        text: `✅ Task Created! "${taskTitle}" has been scheduled into your Daily Command Center agenda.`,
-      };
-      persistMessages([...updatedWithUser, replyMsg]);
-      return;
-    }
-
-    // Tool 6: Quick Job Application
-    const jobMatch = messageToSend.match(/(?:add|apply|record)\s*(?:job|application):?\s*(.+)/i);
-    if (jobMatch) {
-      const details = jobMatch[1].trim();
-      const parts = details.split(/ at | @ |,|-/i);
-      const role = parts[0]?.trim() || 'Software Engineer';
-      const company = parts[1]?.trim() || 'Tech Enterprise';
-      useJobStore.getState().addJob({
-        companyName: company,
-        role: role,
-        location: 'Remote / Hybrid',
-        workMode: 'Remote',
-        ctcMin: 22,
-        ctcMax: 35,
-        stage: 'applied',
-        appliedDate: new Date().toISOString().slice(0, 10),
-        source: 'AI Assistant',
-      });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      const replyMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'agent',
-        text: `💼 Application Tracked! Added "${role} at ${company}" to your Career Kanban Pipeline with stage set to "Applied".`,
-      };
-      persistMessages([...updatedWithUser, replyMsg]);
-      return;
-    }
-
-    // Standard AI LLM Execution
-    if (!hasKey) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-      setApiKeyModalVisible(true);
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const reply = await AIService.generateReply(
-        messageToSend,
-        messages,
-        {
-          steps: todaySteps,
-          pendingLoansCount: activeLoansCount,
-          upcomingInterviewsCount,
-        }
-      );
-
+      const result = await ActionAgentEngine.processMessage(messageToSend, messages);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+
       const replyMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'agent',
-        text: reply,
+        text: result.replyText,
+        actionTitle: result.actionTitle,
+        actionBadge: result.actionBadge,
       };
       persistMessages([...updatedWithUser, replyMsg]);
-    } catch {
+    } catch (err) {
+      console.warn('[AgentScreen] Action error:', err);
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'agent',
-        text: "Network error: Unable to reach AI servers. Please check your internet connection or verify your API key in Settings.",
+        text: "I couldn't complete that command right now. Please verify your connection or command format.",
       };
       persistMessages([...updatedWithUser, errorMsg]);
     } finally {
@@ -333,40 +256,66 @@ export const AgentScreen: React.FC = () => {
           contentContainerStyle={styles.launchersScrollContent}
         >
           <TouchableOpacity
+            style={[styles.launcherChip, { borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}
+            onPress={() => handleSend("₹150 tea expense")}
+          >
+            <Text style={[styles.launcherText, { color: '#10B981' }]}>💳 Add ₹150 Tea</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.launcherChip, { borderColor: '#06B6D4', backgroundColor: 'rgba(6, 182, 212, 0.08)' }]}
+            onPress={() => handleSend("500ml water")}
+          >
+            <Text style={[styles.launcherText, { color: '#06B6D4' }]}>💧 +500ml Water</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.launcherChip, { borderColor: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}
+            onPress={() => handleSend("இன்றைய நல்ல நேரம் என்ன?")}
+          >
+            <Text style={[styles.launcherText, { color: '#F59E0B' }]}>🕉️ நல்ல நேரம்</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.launcherChip, { borderColor: '#38BDF8', backgroundColor: 'rgba(56, 189, 248, 0.08)' }]}
+            onPress={() => handleSend("Chennai React jobs")}
+          >
+            <Text style={[styles.launcherText, { color: '#38BDF8' }]}>💼 Chennai Jobs</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.launcherChip, { borderColor: '#8B5CF6', backgroundColor: 'rgba(139, 92, 246, 0.08)' }]}
+            onPress={() => handleSend("Summary")}
+          >
+            <Text style={[styles.launcherText, { color: '#8B5CF6' }]}>📊 Daily Briefing</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.launcherChip}
+            onPress={() => handleSend("Add task: Finish mobile feature audit")}
+          >
+            <Text style={styles.launcherText}>🎯 Add Priority Task</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.launcherChip, { borderColor: Colors.gold }]}
             onPress={() => setFlashcardsVisible(true)}
           >
             <Text style={[styles.launcherText, { color: Colors.gold }]}>⚡ 10m Flashcards</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.launcherChip, { borderColor: Colors.purple }]}
             onPress={() => setSundayResetVisible(true)}
           >
             <Text style={[styles.launcherText, { color: Colors.purple }]}>🕯️ Sunday Reset</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.launcherChip, { borderColor: Colors.cyan }]}
             onPress={() => setSecondBrainVisible(true)}
           >
             <Text style={[styles.launcherText, { color: Colors.cyan }]}>📝 Second Brain</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.launcherChip}
-            onPress={() => handleSend("Log 500ml water")}
-          >
-            <Text style={styles.launcherText}>💧 +500ml Water</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.launcherChip}
-            onPress={() => handleSend("Add task: Complete React Native performance audit")}
-          >
-            <Text style={styles.launcherText}>✅ Add Task</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.launcherChip}
-            onPress={() => handleSend("Give me a 5-minute system design interview quick prep summary")}
-          >
-            <Text style={styles.launcherText}>⚡ 5m System Design</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -393,6 +342,17 @@ export const AgentScreen: React.FC = () => {
                     <Text style={styles.agentTagText}>AAYON AI</Text>
                   </View>
                 )}
+                {m.actionTitle && (
+                  <View style={styles.actionCardHeader}>
+                    <Ionicons name="flash" size={13} color={Colors.gold} />
+                    <Text style={styles.actionCardTitle}>{m.actionTitle}</Text>
+                    {m.actionBadge && (
+                      <View style={styles.actionCardPill}>
+                        <Text style={styles.actionCardPillText}>{m.actionBadge}</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
                 <Text style={styles.bubbleText}>{m.text}</Text>
               </GlassCard>
             </View>
@@ -414,7 +374,7 @@ export const AgentScreen: React.FC = () => {
             style={styles.textInput}
             value={input}
             onChangeText={setInput}
-            placeholder="Type a command or ask AAYON..."
+            placeholder="Command: '₹150 tea', '500ml water', 'நல்ல நேரம்'..."
             placeholderTextColor={Colors.textMuted}
             editable={!isLoading}
             onSubmitEditing={() => handleSend()}
@@ -602,6 +562,35 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.purple,
     textTransform: 'uppercase',
+  },
+  actionCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  actionCardTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.gold,
+    letterSpacing: 0.3,
+  },
+  actionCardPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: Radii.full,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    marginLeft: 'auto',
+  },
+  actionCardPillText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FDE68A',
   },
   bubbleText: {
     fontSize: 13,

@@ -1,4 +1,5 @@
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { PedometerService } from '@/core/native-bridges/pedometer-adapter';
 import { useHealthStore } from '@/features/health/state/health-store';
 import { NotificationService } from '@/core/utils/notification-service';
@@ -7,6 +8,7 @@ export class StepTracker {
   private static isInitialized = false;
   private static unsubscribePedometer: (() => void) | null = null;
   private static appStateSubscription: { remove: () => void } | null = null;
+  private static notificationResponseSubscription: { remove: () => void } | null = null;
   private static lastNotificationUpdateTime = 0;
 
   static async init(): Promise<void> {
@@ -15,6 +17,21 @@ export class StepTracker {
 
     // Reset daily counters if day has changed
     useHealthStore.getState().checkAndResetDay();
+
+    // Register notification action category (Dismiss / Close button on notification)
+    await NotificationService.setupStepNotificationCategory();
+
+    // Listen for notification action button taps (e.g. user taps "Dismiss / Close ✕" from notification bar)
+    if (!this.notificationResponseSubscription) {
+      this.notificationResponseSubscription = Notifications.addNotificationResponseReceivedListener(
+        (response) => {
+          if (response.actionIdentifier === NotificationService.STEP_ACTION_CLOSE) {
+            useHealthStore.getState().setStepNotificationEnabled(false);
+            NotificationService.cancelStepTrackerNotification();
+          }
+        }
+      );
+    }
 
     try {
       const { isAvailable, permissionGranted, hasHistoricalSupport } =
@@ -28,9 +45,13 @@ export class StepTracker {
           }
         }
 
-        // Show initial ongoing background notification
+        // Show initial ongoing background notification if user enabled it
         const state = useHealthStore.getState();
-        NotificationService.showStepTrackerNotification(state.todaySteps, state.stepGoal);
+        if (state.isStepNotificationEnabled) {
+          NotificationService.showStepTrackerNotification(state.todaySteps, state.stepGoal);
+        } else {
+          NotificationService.cancelStepTrackerNotification();
+        }
 
         // Single global listener for live steps across the entire app
         this.unsubscribePedometer = PedometerService.subscribeLiveSteps((delta) => {
@@ -38,14 +59,16 @@ export class StepTracker {
             const store = useHealthStore.getState();
             store.addLiveSteps(delta);
 
-            // Update persistent notification throttled every 10s to conserve battery
+            // Update notification throttled every 10s to conserve battery
             const now = Date.now();
             if (now - this.lastNotificationUpdateTime > 10000) {
               this.lastNotificationUpdateTime = now;
-              NotificationService.showStepTrackerNotification(
-                store.todaySteps + delta,
-                store.stepGoal
-              );
+              if (store.isStepNotificationEnabled) {
+                NotificationService.showStepTrackerNotification(
+                  store.todaySteps,
+                  store.stepGoal
+                );
+              }
             }
           }
         });
@@ -56,8 +79,22 @@ export class StepTracker {
           (nextState: AppStateStatus) => {
             if (nextState === 'active') {
               useHealthStore.getState().checkAndResetDay();
+
+              // On iOS, sync historical steps from CoreMotion
+              if (Platform.OS === 'ios') {
+                PedometerService.getTodaySteps().then((realSteps) => {
+                  if (realSteps > 0) {
+                    useHealthStore.getState().setTodaySteps(realSteps);
+                  }
+                });
+              }
+
               const cur = useHealthStore.getState();
-              NotificationService.showStepTrackerNotification(cur.todaySteps, cur.stepGoal);
+              if (cur.isStepNotificationEnabled) {
+                NotificationService.showStepTrackerNotification(cur.todaySteps, cur.stepGoal);
+              } else {
+                NotificationService.cancelStepTrackerNotification();
+              }
             }
           }
         );
@@ -75,6 +112,10 @@ export class StepTracker {
     if (this.appStateSubscription) {
       this.appStateSubscription.remove();
       this.appStateSubscription = null;
+    }
+    if (this.notificationResponseSubscription) {
+      this.notificationResponseSubscription.remove();
+      this.notificationResponseSubscription = null;
     }
     NotificationService.cancelStepTrackerNotification();
     this.isInitialized = false;

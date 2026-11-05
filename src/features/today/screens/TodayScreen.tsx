@@ -28,12 +28,8 @@ import { QuickBrainDumpModal } from '@/features/notes/components/QuickBrainDumpM
 import { SundayResetModal } from '@/features/today/components/SundayResetModal';
 import { KeePassVaultModal } from '@/features/vault/components/KeePassVaultModal';
 import { AddTransactionModal } from '@/features/wealth/components/AddTransactionModal';
-
-interface DailyTask {
-  id: string;
-  title: string;
-  done: boolean;
-}
+import { useTamilCalendarStore } from '@/features/calendar/state/tamil-calendar-store';
+import { useTodoStore } from '@/features/todo/state/todo-store';
 
 const STORAGE_KEY_TASKS = '@personal_app:daily_tasks_v2';
 
@@ -42,6 +38,8 @@ export const TodayScreen: React.FC = () => {
   // Live Store Bindings
   const todaySteps = useHealthStore((s) => s.todaySteps);
   const stepGoal = useHealthStore((s) => s.stepGoal);
+  const isStepNotificationEnabled = useHealthStore((s) => s.isStepNotificationEnabled);
+  const setStepNotificationEnabled = useHealthStore((s) => s.setStepNotificationEnabled);
   const caloriesBurned = useHealthStore((s) => s.caloriesBurnedKcal);
   const waterMl = useHealthStore((s) => s.waterIntakeMl);
   const waterGoal = useHealthStore((s) => s.waterGoalMl);
@@ -60,6 +58,9 @@ export const TodayScreen: React.FC = () => {
   const signOut = useAuthStore((s) => s.signOut);
   const userName = user?.name ? user.name.split(' ')[0] : 'User';
   const openSidebar = useSidebarStore((s) => s.openSidebar);
+
+  const openTamilCalendar = useTamilCalendarStore((s) => s.openModal);
+  const tamilCalendarData = useTamilCalendarStore((s) => s.calendarData);
 
   const preferredLocations = useCandidateProfileStore((s) => s.preferences.preferredLocations);
   const userCity = preferredLocations && preferredLocations.length > 0 ? preferredLocations[0] : 'Chennai';
@@ -84,8 +85,12 @@ export const TodayScreen: React.FC = () => {
   // Dynamic Briefing
   const [aiBriefing, setAiBriefing] = useState<string>('Generating your morning executive briefing...');
 
-  // Tasks with persistence
-  const [tasks, setTasks] = useState<DailyTask[]>([]);
+  // Unified Todo Store Bindings
+  const todos = useTodoStore((s) => s.todos);
+  const addTodo = useTodoStore((s) => s.addTodo);
+  const toggleTodo = useTodoStore((s) => s.toggleTodo);
+  const deleteTodo = useTodoStore((s) => s.deleteTodo);
+
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isAddTaskModalVisible, setIsAddTaskModalVisible] = useState(false);
   const [isVaultSettingsVisible, setIsVaultSettingsVisible] = useState(false);
@@ -135,18 +140,28 @@ export const TodayScreen: React.FC = () => {
       if (res) setWeather(res);
     });
 
-    // 2. Load saved tasks
+    // 2. Migrate any legacy tasks from local storage into unified useTodoStore
     AsyncStorage.getItem(STORAGE_KEY_TASKS).then((saved) => {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            setTasks(parsed);
-            return;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const currentTitles = new Set(
+              useTodoStore.getState().todos.map((t) => t.title.toLowerCase())
+            );
+            parsed.forEach((item: any) => {
+              if (item?.title && !currentTitles.has(item.title.toLowerCase())) {
+                useTodoStore.getState().addTodo({
+                  title: item.title,
+                  category: 'Work',
+                  priority: 'high',
+                });
+              }
+            });
+            AsyncStorage.removeItem(STORAGE_KEY_TASKS).catch(() => {});
           }
         } catch {}
       }
-      setTasks([]);
     });
   }, []);
 
@@ -165,31 +180,24 @@ export const TodayScreen: React.FC = () => {
     });
   }, [todaySteps, activeLoans.length, upcomingInterviewJob?.companyName]);
 
-  const saveTasks = (newTasks: DailyTask[]) => {
-    setTasks(newTasks);
-    AsyncStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(newTasks)).catch(() => {});
-  };
-
   const toggleTask = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    const updated = tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t));
-    saveTasks(updated);
+    toggleTodo(id);
   };
 
   const deleteTask = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    const updated = tasks.filter((t) => t.id !== id);
-    saveTasks(updated);
+    deleteTodo(id);
   };
 
   const handleAddTask = () => {
     if (!newTaskTitle.trim()) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    const updated: DailyTask[] = [
-      ...tasks,
-      { id: Date.now().toString(), title: newTaskTitle.trim(), done: false },
-    ];
-    saveTasks(updated);
+    addTodo({
+      title: newTaskTitle.trim(),
+      category: 'Work',
+      priority: 'high',
+    });
     setNewTaskTitle('');
     setIsAddTaskModalVisible(false);
   };
@@ -253,6 +261,19 @@ export const TodayScreen: React.FC = () => {
             <Text style={styles.greeting} numberOfLines={1}>{getGreeting()}, {userName} 👋</Text>
             <View style={styles.subHeaderRow}>
               <Text style={styles.subDate}>{formattedDate}</Text>
+              <TouchableOpacity
+                style={styles.tamilDatePill}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  openTamilCalendar();
+                }}
+              >
+                <Text style={styles.tamilDateText}>
+                  🕉️ {tamilCalendarData.tamilDate.tamilMonth} {tamilCalendarData.tamilDate.tamilDay}
+                </Text>
+              </TouchableOpacity>
               {weather && (
                 <View style={styles.weatherBadge}>
                   <Text style={styles.weatherText}>⛅ {weather.tempCelsius}°C</Text>
@@ -305,8 +326,36 @@ export const TodayScreen: React.FC = () => {
         {/* Quick Health Summary Rings */}
         <View style={styles.metricsRow}>
           <GlassCard style={styles.metricCard}>
-            <View style={styles.metricIconWrap}>
-              <Ionicons name="footsteps-outline" size={18} color={Colors.primary} />
+            <View style={styles.metricHeaderRow}>
+              <View style={styles.metricIconWrap}>
+                <Ionicons name="footsteps-outline" size={18} color={Colors.primary} />
+              </View>
+              {isStepNotificationEnabled ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                    setStepNotificationEnabled(false);
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.metricNotifCloseBtn}
+                  accessibilityLabel="Close step tracker notification"
+                >
+                  <Ionicons name="close-circle" size={12} color="#EF4444" />
+                  <Text style={styles.metricNotifCloseText}>Close ✕</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setStepNotificationEnabled(true);
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.metricNotifIconBtnMuted}
+                  accessibilityLabel="Enable step notification"
+                >
+                  <Ionicons name="notifications-outline" size={13} color={Colors.textMuted} />
+                </TouchableOpacity>
+              )}
             </View>
             <Text style={styles.metricValue}>{todaySteps.toLocaleString('en-IN')}</Text>
             <Text style={styles.metricLabel}>
@@ -376,7 +425,7 @@ export const TodayScreen: React.FC = () => {
             style={[styles.commandChip, { borderColor: 'rgba(129, 140, 248, 0.35)', backgroundColor: 'rgba(129, 140, 248, 0.1)' }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setActivePomodoroTaskTitle(tasks[0]?.title || 'Deep Focus Session');
+              setActivePomodoroTaskTitle(todos[0]?.title || 'Deep Focus Session');
               setIsPomodoroVisible(true);
             }}
           >
@@ -475,7 +524,7 @@ export const TodayScreen: React.FC = () => {
           </View>
         </View>
 
-        {tasks.length === 0 ? (
+        {todos.length === 0 ? (
           <GlassCard style={styles.emptyTasksCard}>
             <Ionicons name="checkmark-done-circle-outline" size={32} color={Colors.primary} />
             <Text style={styles.emptyTasksText}>All tasks completed! Ready for new focus items?</Text>
@@ -492,10 +541,10 @@ export const TodayScreen: React.FC = () => {
             </TouchableOpacity>
           </GlassCard>
         ) : (
-          tasks.map((task, index) => (
+          todos.map((task, index) => (
             <GlassCard
               key={task.id}
-              style={[styles.taskCard, task.done ? styles.taskCardDone : null]}
+              style={[styles.taskCard, task.completed ? styles.taskCardDone : null]}
             >
               <TouchableOpacity
                 style={styles.taskToggleRow}
@@ -503,16 +552,16 @@ export const TodayScreen: React.FC = () => {
                 onPress={() => toggleTask(task.id)}
               >
                 <Ionicons
-                  name={task.done ? 'checkmark-circle' : 'ellipse-outline'}
+                  name={task.completed ? 'checkmark-circle' : 'ellipse-outline'}
                   size={22}
-                  color={task.done ? Colors.primary : Colors.textMuted}
+                  color={task.completed ? Colors.primary : Colors.textMuted}
                 />
-                <Text style={[styles.taskTitle, task.done ? styles.taskTitleDone : null]}>
+                <Text style={[styles.taskTitle, task.completed ? styles.taskTitleDone : null]}>
                   {index + 1}. {task.title}
                 </Text>
               </TouchableOpacity>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                {!task.done && (
+                {!task.completed && (
                   <TouchableOpacity
                     style={styles.taskPomodoroBtn}
                     onPress={() => {
@@ -763,6 +812,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
   },
+  tamilDatePill: {
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: Radii.full,
+  },
+  tamilDateText: {
+    fontSize: 11,
+    color: '#FDE68A',
+    fontWeight: '700',
+  },
   weatherBadge: {
     backgroundColor: Colors.cardSubtle || '#27272A',
     paddingHorizontal: 8,
@@ -843,6 +905,41 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     alignItems: 'center',
   },
+  metricHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    position: 'relative',
+    marginBottom: 6,
+  },
+  metricNotifCloseBtn: {
+    position: 'absolute',
+    right: -4,
+    top: -4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+    borderRadius: Radii.full,
+    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.45)',
+  },
+  metricNotifCloseText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  metricNotifIconBtnMuted: {
+    position: 'absolute',
+    right: -2,
+    top: -2,
+    padding: 4,
+    borderRadius: Radii.full,
+    backgroundColor: 'rgba(148, 163, 184, 0.12)',
+  },
   metricIconWrap: {
     width: 32,
     height: 32,
@@ -850,7 +947,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryGlow,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
   },
   metricValue: {
     fontSize: 16,

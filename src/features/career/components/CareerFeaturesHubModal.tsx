@@ -34,6 +34,9 @@ export interface CareerFeaturesHubModalProps {
   onOpenInHandCtc: () => void;
   onOpenAiCoach: () => void;
   onOpenProfile: () => void;
+  onOpenAiResumeParser?: () => void;
+  onOpenAiInterviewCoach?: () => void;
+  onOpenPortalScanner?: () => void;
   onOpenPreferences: () => void;
   onOpenAnswerBank: () => void;
   onExportCsv: () => void;
@@ -68,6 +71,9 @@ export const CareerFeaturesHubModal: React.FC<CareerFeaturesHubModalProps> = ({
   onOpenInHandCtc,
   onOpenAiCoach,
   onOpenProfile,
+  onOpenAiResumeParser,
+  onOpenAiInterviewCoach,
+  onOpenPortalScanner,
   onOpenPreferences,
   onOpenAnswerBank,
   onExportCsv,
@@ -122,6 +128,39 @@ export const CareerFeaturesHubModal: React.FC<CareerFeaturesHubModalProps> = ({
         badge: 'Vault 🛡️',
         badgeVariant: 'purple',
         action: () => triggerAction(() => useVaultStore.getState().openModal()),
+      },
+      {
+        id: 'ats-portal-scanner',
+        title: 'ATS Portal Scanner (Zero-Token) ⚡',
+        subtitle: 'Live real-time crawler for Greenhouse, Lever & Ashby company boards',
+        category: 'ai',
+        icon: 'rocket',
+        color: '#38BDF8',
+        badge: 'ZERO-TOKEN',
+        badgeVariant: 'cyan',
+        action: () => triggerAction(() => onOpenPortalScanner?.()),
+      },
+      {
+        id: 'ai-resume-parser',
+        title: 'AI Smart Resume Parser ✨',
+        subtitle: 'Upload PDF or paste text to auto-extract skills, education & experience into profile',
+        category: 'ai',
+        icon: 'sparkles',
+        color: '#C084FC',
+        badge: 'AUTONOMOUS',
+        badgeVariant: 'purple',
+        action: () => triggerAction(() => onOpenAiResumeParser?.()),
+      },
+      {
+        id: 'ai-interview-star',
+        title: 'AI Interview Coach & STAR Prep ⭐',
+        subtitle: 'Company-specific intelligence, top 5 questions & tailored STAR answer scripts',
+        category: 'ai',
+        icon: 'star',
+        color: '#F59E0B',
+        badge: 'CAREER-OPS',
+        badgeVariant: 'gold',
+        action: () => triggerAction(() => (onOpenAiInterviewCoach ? onOpenAiInterviewCoach() : onOpenAiCoach())),
       },
       {
         id: 'ai-coach',

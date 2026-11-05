@@ -79,10 +79,9 @@ export class PedometerService {
             const delta = currentSteps - this.lastCumulativeSteps;
             this.lastCumulativeSteps = currentSteps;
 
-            // Strict human walking physics filter:
-            // Delta must be positive and humanly realistic (at most 25 steps per sensor poll event).
-            // Any jump larger than 25 in a fraction of a second is a sensor anomaly/noise.
-            if (delta > 0 && delta <= 25) {
+            // Allow realistic delta (including batched steps accumulated while phone screen was locked/off).
+            // Cap at 10,000 steps per event to filter out device reboot jumps or corrupt hardware spikes.
+            if (delta > 0 && delta <= 10000) {
               this.listeners.forEach((listener) => {
                 try {
                   listener(delta);
@@ -90,6 +89,9 @@ export class PedometerService {
                   console.warn('[PedometerService] Listener error:', err);
                 }
               });
+            } else if (delta < 0) {
+              // Phone was rebooted or hardware counter reset
+              this.lastCumulativeSteps = currentSteps;
             }
           }
         });

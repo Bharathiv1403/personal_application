@@ -21,7 +21,7 @@ import { Badge } from '@/core/design-system/primitives/Badge';
 import { AIService } from '@/core/utils/ai-service';
 import { useAiConfigStore } from '@/core/state/ai-config-store';
 import { ApiKeyModal } from '@/core/components/ApiKeyModal';
-import { useJobStore } from '../state/job-store';
+import { useJobStore, EnterpriseAtsEvaluation } from '../state/job-store';
 
 interface AtsScannerModalProps {
   visible: boolean;
@@ -37,11 +37,7 @@ export const AtsScannerModal: React.FC<AtsScannerModalProps> = ({ visible, onClo
   const [tailoredBullets, setTailoredBullets] = useState<string[]>([]);
   const [apiKeyModalVisible, setApiKeyModalVisible] = useState(false);
 
-  const [scanResult, setScanResult] = useState<{
-    matchScore: number;
-    matchedSkills: string[];
-    missingSkills: string[];
-  } | null>(null);
+  const [scanResult, setScanResult] = useState<EnterpriseAtsEvaluation | null>(null);
 
   const handleScan = () => {
     if (!jdText.trim()) return;
@@ -136,14 +132,48 @@ export const AtsScannerModal: React.FC<AtsScannerModalProps> = ({ visible, onClo
               <View style={styles.resultContainer}>
                 <View style={styles.resultHeader}>
                   <View>
-                    <Text style={styles.scoreBig}>{scanResult.matchScore}%</Text>
-                    <Text style={styles.scoreSub}>ATS Compatibility Match</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                      <Text style={styles.scoreBig}>{scanResult.tierScore}</Text>
+                      <Text style={styles.scoreScale}>/ 5.0</Text>
+                      <Text style={styles.scorePercentText}>({scanResult.matchScore}%)</Text>
+                    </View>
+                    <Text style={styles.scoreSub}>Enterprise ATS Score • {scanResult.tierLabel}</Text>
                   </View>
-                  <Badge
-                    label={scanResult.matchScore >= 80 ? 'High Fit' : 'Moderate Fit'}
-                    variant={scanResult.matchScore >= 80 ? 'primary' : 'gold'}
-                  />
+                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                    <Badge
+                      label={scanResult.tierLabel}
+                      variant={scanResult.tierScore >= 4.0 ? 'primary' : scanResult.tierScore >= 3.0 ? 'gold' : 'purple'}
+                    />
+                    <View style={styles.seniorityPill}>
+                      <Text style={styles.seniorityText}>{scanResult.seniorityAlignment}</Text>
+                    </View>
+                  </View>
                 </View>
+
+                {/* Red Flags / Risk Warnings */}
+                {scanResult.redFlags.length > 0 && (
+                  <View style={styles.redFlagsBox}>
+                    <Text style={styles.redFlagsTitle}>⚠️ Posting Anomalies / Risks Observed:</Text>
+                    {scanResult.redFlags.map((flag, idx) => (
+                      <Text key={idx} style={styles.redFlagItem}>• {flag}</Text>
+                    ))}
+                  </View>
+                )}
+
+                {/* 3-Step Action Plan */}
+                {scanResult.actionPlan.length > 0 && (
+                  <View style={styles.actionPlanBox}>
+                    <Text style={styles.actionPlanTitle}>🎯 Recommended ATS Gap-Closure Action Plan:</Text>
+                    {scanResult.actionPlan.map((action, idx) => (
+                      <View key={idx} style={styles.actionPlanRow}>
+                        <View style={styles.actionPlanNum}>
+                          <Text style={styles.actionPlanNumText}>{idx + 1}</Text>
+                        </View>
+                        <Text style={styles.actionPlanText}>{action}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
 
                 {/* Matched Keywords */}
                 <View style={styles.sectionWrap}>
@@ -472,5 +502,86 @@ const styles = StyleSheet.create({
     color: '#34D399',
     marginTop: 4,
     fontWeight: '600',
+  },
+  scoreScale: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.textMuted,
+  },
+  scorePercentText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  seniorityPill: {
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
+  },
+  seniorityText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#38BDF8',
+  },
+  redFlagsBox: {
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+    borderRadius: Radii.md,
+    padding: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  redFlagsTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EF4444',
+    marginBottom: 4,
+  },
+  redFlagItem: {
+    fontSize: 11,
+    color: '#FCA5A5',
+    lineHeight: 16,
+  },
+  actionPlanBox: {
+    backgroundColor: 'rgba(16, 185, 129, 0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+    borderRadius: Radii.md,
+    padding: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  actionPlanTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#34D399',
+    marginBottom: 6,
+  },
+  actionPlanRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginBottom: 4,
+  },
+  actionPlanNum: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionPlanNumText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#34D399',
+  },
+  actionPlanText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#E2E8F0',
+    lineHeight: 16,
   },
 });

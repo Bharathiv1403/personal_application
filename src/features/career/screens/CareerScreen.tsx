@@ -35,6 +35,9 @@ import { OfferNegotiatorModal } from '../components/OfferNegotiatorModal';
 import { PreInterviewFlashcardsModal } from '../components/PreInterviewFlashcardsModal';
 import { InterviewRetrospectiveModal } from '../components/InterviewRetrospectiveModal';
 import { CareerFeaturesHubModal } from '../components/CareerFeaturesHubModal';
+import { AiResumeParserModal } from '../components/AiResumeParserModal';
+import { AiInterviewCoachModal } from '../components/AiInterviewCoachModal';
+import { PortalScannerModal } from '../components/PortalScannerModal';
 import { useAiConfigStore } from '@/core/state/ai-config-store';
 import { AIService } from '@/core/utils/ai-service';
 import { ApiKeyModal } from '@/core/components/ApiKeyModal';
@@ -53,10 +56,13 @@ const PLATFORM_FILTERS = [
   { id: 'Remote Hub', label: 'Remote Hub', icon: 'globe-outline', color: '#22D3EE' },
 ];
 
+const LOCATION_FILTERS = ['All', 'Chennai', 'Bangalore', 'Hyderabad', 'Pune', 'Remote'];
+
 export const CareerScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>('Jobs');
   const [trackerStage, setTrackerStage] = useState<'All' | 'wishlist' | 'applied' | 'interview' | 'offer'>('All');
   const [selectedPlatform, setSelectedPlatform] = useState<string>('All');
+  const [selectedLocation, setSelectedLocation] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals state
@@ -65,6 +71,7 @@ export const CareerScreen: React.FC = () => {
   const hasKey = isAiConfigured || AIService.hasConfiguredKey();
 
   const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [aiParserModalVisible, setAiParserModalVisible] = useState(false);
   const [preferencesModalVisible, setPreferencesModalVisible] = useState(false);
   const [answerBankModalVisible, setAnswerBankModalVisible] = useState(false);
   const [autoApplyModalVisible, setAutoApplyModalVisible] = useState(false);
@@ -75,6 +82,8 @@ export const CareerScreen: React.FC = () => {
   const [inHandModalVisible, setInHandModalVisible] = useState(false);
   const [coverLetterModalVisible, setCoverLetterModalVisible] = useState(false);
   const [coachModalVisible, setCoachModalVisible] = useState(false);
+  const [aiInterviewCoachModalVisible, setAiInterviewCoachModalVisible] = useState(false);
+  const [portalScannerModalVisible, setPortalScannerModalVisible] = useState(false);
   const [selectedJobForLetter, setSelectedJobForLetter] = useState<JobApplicationItem | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedJobForDetail, setSelectedJobForDetail] = useState<JobApplicationItem | null>(null);
@@ -110,11 +119,26 @@ export const CareerScreen: React.FC = () => {
   const filteredJobs = useMemo(() => {
     return jobs.filter((j) => {
       const query = searchQuery.trim().toLowerCase();
+      const terms = query.split(/\s+/).filter(Boolean);
+
       const matchesQuery =
-        !query ||
-        j.role.toLowerCase().includes(query) ||
-        j.companyName.toLowerCase().includes(query) ||
-        (j.tags && j.tags.some((t) => t.toLowerCase().includes(query)));
+        terms.length === 0 ||
+        terms.every((term) =>
+          j.role.toLowerCase().includes(term) ||
+          j.companyName.toLowerCase().includes(term) ||
+          (j.location && j.location.toLowerCase().includes(term)) ||
+          (j.workMode && j.workMode.toLowerCase().includes(term)) ||
+          (j.source && j.source.toLowerCase().includes(term)) ||
+          (j.tags && j.tags.some((t) => t.toLowerCase().includes(term)))
+        );
+
+      if (selectedLocation !== 'All') {
+        const locLower = selectedLocation.toLowerCase();
+        const matchesLoc =
+          (j.location && j.location.toLowerCase().includes(locLower)) ||
+          (j.workMode && j.workMode.toLowerCase().includes(locLower));
+        if (!matchesLoc) return false;
+      }
 
       if (selectedPlatform !== 'All') {
         const platform = getJobPlatformSource(j);
@@ -128,7 +152,7 @@ export const CareerScreen: React.FC = () => {
 
       return matchesQuery;
     });
-  }, [jobs, activeTab, trackerStage, searchQuery, selectedPlatform]);
+  }, [jobs, activeTab, trackerStage, searchQuery, selectedPlatform, selectedLocation]);
 
   const handleLiveAutoSearch = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -376,6 +400,48 @@ export const CareerScreen: React.FC = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={[styles.toolChip, { borderColor: 'rgba(56, 189, 248, 0.4)', backgroundColor: 'rgba(56, 189, 248, 0.12)' }]}
+            activeOpacity={0.8}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setPortalScannerModalVisible(true);
+            }}
+          >
+            <Ionicons name="rocket-sharp" size={15} color="#38BDF8" />
+            <Text style={[styles.toolChipText, { color: '#38BDF8', fontWeight: '700' }]}>
+              ⚡ ATS Scanner
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.toolChip, { borderColor: 'rgba(168, 85, 247, 0.4)', backgroundColor: 'rgba(168, 85, 247, 0.12)' }]}
+            activeOpacity={0.8}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setAiParserModalVisible(true);
+            }}
+          >
+            <Ionicons name="sparkles" size={15} color="#C084FC" />
+            <Text style={[styles.toolChipText, { color: '#C084FC', fontWeight: '700' }]}>
+              ✨ AI Resume Parser
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.toolChip, { borderColor: 'rgba(245, 158, 11, 0.4)', backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}
+            activeOpacity={0.8}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setAiInterviewCoachModalVisible(true);
+            }}
+          >
+            <Ionicons name="star" size={15} color="#F59E0B" />
+            <Text style={[styles.toolChipText, { color: '#FDE68A', fontWeight: '700' }]}>
+              ⭐ Interview STAR Prep
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={styles.toolChip}
             activeOpacity={0.8}
             onPress={() => {
@@ -574,7 +640,7 @@ export const CareerScreen: React.FC = () => {
             <Ionicons name="search" size={16} color={Colors.textMuted} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search roles, skills (React, Vue, Remote)..."
+              placeholder="Search roles, skills, locations (Chennai, Remote)..."
               placeholderTextColor={Colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -654,6 +720,45 @@ export const CareerScreen: React.FC = () => {
                   ]}
                 >
                   {p.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Location Quick Filter Chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.locationFilterScroll}
+          contentContainerStyle={styles.locationFilterContent}
+        >
+          {LOCATION_FILTERS.map((loc) => {
+            const isActive = selectedLocation === loc;
+            return (
+              <TouchableOpacity
+                key={loc}
+                style={[
+                  styles.locationChip,
+                  isActive && styles.locationChipActive,
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  setSelectedLocation(loc);
+                }}
+              >
+                <Ionicons
+                  name={loc === 'Remote' ? 'globe-outline' : loc === 'All' ? 'location-outline' : 'navigate-circle-outline'}
+                  size={12}
+                  color={isActive ? '#38BDF8' : Colors.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.locationChipText,
+                    isActive && styles.locationChipTextActive,
+                  ]}
+                >
+                  {loc === 'All' ? 'All Locations' : loc}
                 </Text>
               </TouchableOpacity>
             );
@@ -865,6 +970,10 @@ export const CareerScreen: React.FC = () => {
         visible={profileModalVisible}
         onClose={() => setProfileModalVisible(false)}
       />
+      <AiResumeParserModal
+        visible={aiParserModalVisible}
+        onClose={() => setAiParserModalVisible(false)}
+      />
       <JobPreferencesModal
         visible={preferencesModalVisible}
         onClose={() => setPreferencesModalVisible(false)}
@@ -901,6 +1010,12 @@ export const CareerScreen: React.FC = () => {
       <InterviewCoachModal
         visible={coachModalVisible}
         onClose={() => setCoachModalVisible(false)}
+      />
+      <AiInterviewCoachModal
+        visible={aiInterviewCoachModalVisible}
+        onClose={() => setAiInterviewCoachModalVisible(false)}
+        initialCompany={selectedJobForDetail?.companyName || ''}
+        initialRole={selectedJobForDetail?.role || ''}
       />
       <JobDetailModal
         visible={detailModalVisible}
@@ -963,12 +1078,37 @@ export const CareerScreen: React.FC = () => {
         onOpenAtsScanner={() => setAtsModalVisible(true)}
         onOpenInHandCtc={() => setInHandModalVisible(true)}
         onOpenAiCoach={() => setCoachModalVisible(true)}
+        onOpenAiInterviewCoach={() => setAiInterviewCoachModalVisible(true)}
+        onOpenPortalScanner={() => setPortalScannerModalVisible(true)}
         onOpenProfile={() => setProfileModalVisible(true)}
+        onOpenAiResumeParser={() => setAiParserModalVisible(true)}
         onOpenPreferences={() => setPreferencesModalVisible(true)}
         onOpenAnswerBank={() => setAnswerBankModalVisible(true)}
         onExportCsv={handleExportPipelineCSV}
         hasAiKey={hasKey}
         totalJobsCount={jobs.length}
+      />
+      <PortalScannerModal
+        visible={portalScannerModalVisible}
+        onClose={() => setPortalScannerModalVisible(false)}
+        onSelectJobForAts={(job) => {
+          setAtsModalVisible(true);
+        }}
+        onSelectJobForStar={(job) => {
+          setSelectedJobForDetail({
+            id: `temp-${Date.now()}`,
+            companyName: job.companyName,
+            role: job.role,
+            location: 'Remote',
+            workMode: 'Remote',
+            ctcMin: 18,
+            ctcMax: 35,
+            stage: 'wishlist',
+            appliedDate: new Date().toISOString().split('T')[0],
+            interviews: [],
+          });
+          setAiInterviewCoachModalVisible(true);
+        }}
       />
     </ScreenContainer>
   );
@@ -1496,6 +1636,37 @@ const styles = StyleSheet.create({
   },
   platformFilterChipTextActive: {
     color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  locationFilterScroll: {
+    marginBottom: Spacing.md,
+  },
+  locationFilterContent: {
+    paddingHorizontal: Spacing.lg,
+    gap: 6,
+  },
+  locationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: Radii.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 5,
+  },
+  locationChipActive: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderColor: '#38BDF8',
+  },
+  locationChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  locationChipTextActive: {
+    color: '#38BDF8',
     fontWeight: '700',
   },
 });

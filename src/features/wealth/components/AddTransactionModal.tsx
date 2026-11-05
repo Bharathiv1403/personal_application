@@ -31,22 +31,24 @@ export const AddTransactionModal: React.FC<Props> = ({
   defaultType = 'expense',
   initialTransaction,
 }) => {
+  const accounts = useWealthStore((s) => s.accounts);
+  const categories = useWealthStore((s) => s.categories);
+  const addTransaction = useWealthStore((s) => s.addTransaction);
+  const updateTransaction = useWealthStore((s) => s.updateTransaction);
+
+  const defaultAccount = accounts[0]?.id || 'acc-cash';
+
   const [type, setType] = useState<TransactionType>(defaultType);
   const [amount, setAmount] = useState('');
   const [title, setTitle] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('food');
-  const [selectedAccountId, setSelectedAccountId] = useState('');
-  const [selectedToAccountId, setSelectedToAccountId] = useState('');
+  const [selectedAccountId, setSelectedAccountId] = useState(defaultAccount);
+  const [selectedToAccountId, setSelectedToAccountId] = useState(accounts[1]?.id || '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
   const [merchant, setMerchant] = useState('');
   const [description, setDescription] = useState('');
   const [receiptName, setReceiptName] = useState<string | null>(null);
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
-
-  const accounts = useWealthStore((s) => s.accounts);
-  const categories = useWealthStore((s) => s.categories);
-  const addTransaction = useWealthStore((s) => s.addTransaction);
-  const updateTransaction = useWealthStore((s) => s.updateTransaction);
 
   const prevVisibleRef = React.useRef(false);
   const prevInitialTxRef = React.useRef<Transaction | null | undefined>(undefined);
@@ -123,12 +125,13 @@ export const AddTransactionModal: React.FC<Props> = ({
       return;
     }
 
-    if (!selectedAccountId) {
+    const effectiveAccountId = selectedAccountId || accounts[0]?.id || 'acc-cash';
+    if (!effectiveAccountId) {
       Alert.alert('Select Account', 'Please select a valid account.');
       return;
     }
 
-    if (type === 'transfer' && selectedAccountId === selectedToAccountId) {
+    if (type === 'transfer' && effectiveAccountId === selectedToAccountId) {
       Alert.alert('Invalid Transfer', 'Source and destination accounts must be different.');
       return;
     }
@@ -142,7 +145,7 @@ export const AddTransactionModal: React.FC<Props> = ({
           title: title.trim(),
           amount: numAmount,
           categoryId: type === 'transfer' ? 'misc' : selectedCategoryId,
-          accountId: selectedAccountId,
+          accountId: effectiveAccountId,
           toAccountId: type === 'transfer' ? selectedToAccountId : undefined,
           paymentMethod,
           merchant: merchant.trim() || undefined,
@@ -156,7 +159,7 @@ export const AddTransactionModal: React.FC<Props> = ({
           title: title.trim(),
           amount: numAmount,
           categoryId: type === 'transfer' ? 'misc' : selectedCategoryId,
-          accountId: selectedAccountId,
+          accountId: effectiveAccountId,
           toAccountId: type === 'transfer' ? selectedToAccountId : undefined,
           date: new Date().toISOString().slice(0, 10),
           paymentMethod,

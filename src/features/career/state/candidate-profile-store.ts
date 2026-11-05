@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
+import { ParsedResumeResult } from '@/core/services/ai-resume-parser';
 
 // ==========================================
 // Career Profile Types
@@ -135,6 +136,7 @@ export interface CandidateProfileState {
   removeSkill: (skill: string) => void;
   removeResume: () => void;
   updateProfile: (fields: Partial<CandidateProfileState>) => void;
+  applyParsedResumeData: (data: ParsedResumeResult) => void;
   syncWithAuthUser: (name: string, email: string) => void;
   resetProfile: () => void;
 }
@@ -313,6 +315,104 @@ export const useCandidateProfileStore = create<CandidateProfileState>()(
           name: name ? name.trim() : state.name,
           email: email ? email.trim().toLowerCase() : state.email,
         }));
+      },
+
+      applyParsedResumeData: (data: ParsedResumeResult) => {
+        set((state) => {
+          // 1. Merge skills (case-insensitive deduplication)
+          const existingSkillsLower = new Set(state.skills.map((s) => s.toLowerCase()));
+          const newSkillsToAdd = (data.skills || []).filter(
+            (s) => !existingSkillsLower.has(s.toLowerCase())
+          );
+          const mergedSkills = [...state.skills, ...newSkillsToAdd];
+
+          // 2. Build skill records
+          const newSkillRecords: SkillRecord[] = mergedSkills.map((s) => {
+            const existing = state.skillsList.find(
+              (rec) => rec.name.toLowerCase() === s.toLowerCase()
+            );
+            return (
+              existing || {
+                id: `sk-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                name: s,
+                proficiency: 'Advanced',
+                yearsOfExperience: data.yearsOfExperience || '2+',
+              }
+            );
+          });
+
+          // 3. Convert and merge educations
+          const newEduRecords: EducationRecord[] = (data.educations || []).map((edu, idx) => ({
+            id: `edu-parsed-${Date.now()}-${idx}`,
+            qualification: edu.qualification || 'Degree',
+            degree: edu.degree,
+            college: edu.college,
+            startYear: '',
+            graduationYear: edu.graduationYear,
+            grade: edu.grade || '',
+            status: 'Completed',
+          }));
+          const mergedEducations =
+            newEduRecords.length > 0 ? [...state.educations, ...newEduRecords] : state.educations;
+
+          // 4. Convert and merge experiences
+          const newExpRecords: WorkExperienceRecord[] = (data.experiences || []).map((exp, idx) => ({
+            id: `exp-parsed-${Date.now()}-${idx}`,
+            companyName: exp.companyName,
+            jobTitle: exp.jobTitle,
+            employmentType: exp.employmentType || 'Full-time',
+            startDate: exp.startDate,
+            endDate: exp.endDate,
+            isCurrentJob: exp.isCurrentJob ?? false,
+            workLocation: exp.workLocation || data.currentCity || 'Chennai',
+            workMode: exp.workMode || 'Hybrid',
+            responsibilities: exp.responsibilities || '',
+            skillsUsed: exp.skillsUsed || data.skills.slice(0, 4),
+          }));
+          const mergedExperiences =
+            newExpRecords.length > 0 ? [...state.experiences, ...newExpRecords] : state.experiences;
+
+          // 5. Merge preferences
+          const updatedPrefs: JobPreferences = {
+            ...state.preferences,
+            targetJobTitles: Array.from(
+              new Set([
+                ...(state.preferences.targetJobTitles || []),
+                ...(data.suggestedPreferences?.targetJobTitles || [data.targetRole || 'Software Engineer']),
+              ])
+            ),
+            targetKeywords: Array.from(
+              new Set([
+                ...(state.preferences.targetKeywords || []),
+                ...(data.suggestedPreferences?.targetKeywords || data.skills.slice(0, 5)),
+              ])
+            ),
+            preferredLocations: Array.from(
+              new Set([
+                ...(state.preferences.preferredLocations || []),
+                ...(data.suggestedPreferences?.preferredLocations || (data.currentCity ? [data.currentCity] : ['Chennai', 'Remote'])),
+              ])
+            ),
+          };
+
+          return {
+            name: data.name ? data.name : state.name,
+            email: data.email ? data.email : state.email,
+            phone: data.phone ? data.phone : state.phone,
+            currentCity: data.currentCity ? data.currentCity : state.currentCity,
+            targetRole: data.targetRole ? data.targetRole : state.targetRole,
+            yearsOfExperience: data.yearsOfExperience ? data.yearsOfExperience : state.yearsOfExperience,
+            expectedCTC: data.expectedCTC ? data.expectedCTC : state.expectedCTC,
+            linkedinUrl: data.linkedinUrl ? data.linkedinUrl : state.linkedinUrl,
+            githubUrl: data.githubUrl ? data.githubUrl : state.githubUrl,
+            portfolioUrl: data.portfolioUrl ? data.portfolioUrl : state.portfolioUrl,
+            skills: mergedSkills,
+            skillsList: newSkillRecords,
+            educations: mergedEducations,
+            experiences: mergedExperiences,
+            preferences: updatedPrefs,
+          };
+        });
       },
 
       resetProfile: () => {

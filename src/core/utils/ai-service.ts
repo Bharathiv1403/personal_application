@@ -2,6 +2,8 @@ export interface ChatMessage {
   id: string;
   sender: 'agent' | 'user';
   text: string;
+  actionTitle?: string;
+  actionBadge?: string;
 }
 
 export type AIProvider = 'gemini' | 'groq' | 'openrouter' | 'pollinations' | 'ollama' | 'huggingface' | 'fallback';
@@ -149,7 +151,7 @@ export class AIService {
   /**
    * Unified multi-provider runner with automatic failover (OpenRouter -> Gemini -> Groq -> Pollinations -> Ollama)
    */
-  private static async queryLLM(options: QueryOptions): Promise<string | null> {
+  static async queryLLM(options: QueryOptions): Promise<string | null> {
     const providers = this.getConfiguredProviders();
 
     for (const provider of providers) {
@@ -686,25 +688,43 @@ Keep reply under 150 words.`;
 
     let prompt = '';
     if (type === 'linkedin_connect') {
-      prompt = `Write a LinkedIn Connection Note under STRICT 280 characters for:
+      prompt = `You are a high-response Tech Career Outreach Expert adhering to career-ops anti-fluff rules.
+Write a LinkedIn Connection Note under STRICT 280 characters for:
 Candidate: ${profile.name} (${profile.title}, ${profile.yearsOfExperience})
 Target: ${role} at ${company}
-Recruiter: ${recruiterName || 'Team member'}
-CRITICAL CONSTRAINT: MUST BE UNDER 280 CHARACTERS. Polite, professional, no fluff.`;
+Recruiter/Lead: ${recruiterName || 'Hiring Lead'}
+RULES:
+- STRICT 280 character limit (count characters carefully).
+- NO sycophantic clichés ("Hope this finds you well", "Excited to connect").
+- Direct, metric-driven hook highlighting technical stack overlap.
+- End with a low-friction inquiry.`;
     } else if (type === 'referral_request') {
-      prompt = `Write a polite, high-converting 1-on-1 Referral Request message to an employee at ${company} for the ${role} role.
+      prompt = `You are an elite Tech Career Coach adhering to career-ops networking rules.
+Write a concise, high-converting 1-on-1 Referral Request to an engineering employee at ${company} for the ${role} role.
 Candidate: ${profile.name} (${profile.title}, ${profile.skills.join(', ')}, ${profile.yearsOfExperience})
-Tags: ${tags.join(', ')}
-Include polite request for internal referral, brief proof of work, and GitHub profile mention. Under 180 words.`;
+Key Tags: ${tags.join(', ')}
+RULES:
+- Zero AI buzzword fluff. Never invent fake claims.
+- Acknowledge their time, state clear 1-sentence value proposition matching ${company}'s stack, and request an internal referral.
+- Under 140 words total. Include GitHub/Portfolio mention if available.`;
     } else if (type === 'recruiter_inmail') {
-      prompt = `Write an executive Cold Outreach InMail to a talent recruiter (${recruiterName || 'HR'}) at ${company} for ${role}.
+      prompt = `You are an executive Tech Recruiter specialist adhering to career-ops rules.
+Write a high-reply-rate Cold Outreach InMail to talent recruiter (${recruiterName || 'Engineering Recruiter'}) at ${company} for ${role}.
 Candidate: ${profile.name} (${profile.yearsOfExperience}, ${profile.title}, ${profile.skills.join(', ')})
-Include punchy subject line, value proposition, and call to action. Under 200 words.`;
+RULES:
+- Punchy, curiosity-driven subject line (no generic "Job Application").
+- Open with specific technical qualification & business impact, NOT "I am writing to express my interest".
+- 2 bullet points of tangible technical capability.
+- Clear, low-friction closing call to action (10-min intro chat).
+- Keep strictly under 180 words.`;
     } else {
-      prompt = `Write a courteous, professional follow-up email checking in on a job application submitted 7 days ago for ${role} at ${company}.
+      prompt = `Write a polished, professional follow-up email checking in on a job application submitted for ${role} at ${company}.
 Recipient: ${recruiterName || 'Hiring Team'}
 Candidate: ${profile.name}
-Tone: Respectful, enthusiastic, professional. Under 150 words.`;
+RULES:
+- Tone: High conviction, professional, respectful of their time.
+- Mention recent technical reinforcement or project progress.
+- Under 130 words.`;
     }
 
     const reply = await this.queryLLM({

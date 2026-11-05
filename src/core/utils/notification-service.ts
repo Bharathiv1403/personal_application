@@ -228,8 +228,31 @@ export class NotificationService {
     }
   }
 
+  static readonly STEP_CATEGORY_ID = 'step_tracker_category';
+  static readonly STEP_ACTION_CLOSE = 'DISMISS_STEP_NOTIFICATION';
+
   /**
-   * Display or update sticky background step tracker notification
+   * Register notification category with close/dismiss action button
+   */
+  static async setupStepNotificationCategory(): Promise<void> {
+    try {
+      await Notifications.setNotificationCategoryAsync(this.STEP_CATEGORY_ID, [
+        {
+          identifier: this.STEP_ACTION_CLOSE,
+          buttonTitle: 'Dismiss / Close ✕',
+          options: {
+            isDestructive: true,
+            opensAppToForeground: false,
+          },
+        },
+      ]);
+    } catch {
+      // Ignore if category setting is not supported
+    }
+  }
+
+  /**
+   * Display or update background step tracker notification
    */
   static async showStepTrackerNotification(steps: number, goal: number): Promise<void> {
     if (Platform.OS !== 'android') return;
@@ -240,13 +263,16 @@ export class NotificationService {
         content: {
           title: 'AAYON: Step Tracker 🚶‍♂️',
           body: `${steps.toLocaleString('en-IN')} / ${goal.toLocaleString('en-IN')} steps (${percent}%)`,
-          sticky: true,
-          autoDismiss: false,
+          categoryIdentifier: this.STEP_CATEGORY_ID,
+          sticky: false,
+          autoDismiss: true,
           priority: Notifications.AndroidNotificationPriority.LOW,
           sound: false,
           data: { type: 'step_tracker' },
         },
-        trigger: null,
+        trigger: {
+          channelId: 'step_tracker_service',
+        } as any,
       });
     } catch (e) {
       // Silently ignore notification failure
@@ -254,11 +280,23 @@ export class NotificationService {
   }
 
   /**
-   * Remove sticky background step tracker notification
+   * Remove background step tracker notification
    */
   static async cancelStepTrackerNotification(): Promise<void> {
     try {
-      await Notifications.dismissNotificationAsync('aayon_step_tracker_ongoing');
+      // Clear sticky flag first in case Android OS cached the ongoing flag
+      await Notifications.scheduleNotificationAsync({
+        identifier: 'aayon_step_tracker_ongoing',
+        content: {
+          title: '',
+          body: '',
+          sticky: false,
+          autoDismiss: true,
+        },
+        trigger: null,
+      }).catch(() => {});
+      await Notifications.dismissNotificationAsync('aayon_step_tracker_ongoing').catch(() => {});
+      await Notifications.cancelScheduledNotificationAsync('aayon_step_tracker_ongoing').catch(() => {});
     } catch {
       // Silently ignore
     }

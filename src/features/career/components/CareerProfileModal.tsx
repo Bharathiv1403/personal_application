@@ -17,6 +17,7 @@ import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
 import { useCandidateProfileStore, EducationRecord, WorkExperienceRecord } from '../state/candidate-profile-store';
 import { Badge } from '@/core/design-system/primitives/Badge';
+import { AiResumeParserModal } from './AiResumeParserModal';
 
 interface Props {
   visible: boolean;
@@ -27,6 +28,7 @@ type ActiveSection = 'Personal' | 'Education' | 'Experience' | 'Resumes';
 
 export const CareerProfileModal: React.FC<Props> = ({ visible, onClose }) => {
   const [activeSection, setActiveSection] = useState<ActiveSection>('Personal');
+  const [aiParserModalVisible, setAiParserModalVisible] = useState(false);
 
   const profile = useCandidateProfileStore();
   const updatePersonalInfo = useCandidateProfileStore((s) => s.updatePersonalInfo);
@@ -140,7 +142,17 @@ export const CareerProfileModal: React.FC<Props> = ({ visible, onClose }) => {
     const success = await pickAndUploadResume();
     if (success) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      Alert.alert('Resume Uploaded! 📄', 'Added new resume version to your candidate vault.');
+      Alert.alert(
+        'Resume Uploaded! 📄',
+        'Would you like AI to automatically parse this resume to extract your skills, education, and work experience?',
+        [
+          { text: 'Later', style: 'cancel' },
+          {
+            text: '✨ Extract with AI',
+            onPress: () => setAiParserModalVisible(true),
+          },
+        ]
+      );
     }
   };
 
@@ -408,6 +420,27 @@ export const CareerProfileModal: React.FC<Props> = ({ visible, onClose }) => {
                   </TouchableOpacity>
                 </View>
 
+                {/* AI Smart Resume Parser Banner */}
+                <TouchableOpacity
+                  style={styles.aiParserBanner}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setAiParserModalVisible(true);
+                  }}
+                >
+                  <View style={styles.aiParserIconCircle}>
+                    <Ionicons name="sparkles" size={16} color="#C084FC" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.aiParserTitle}>✨ AI Smart Resume Parser</Text>
+                    <Text style={styles.aiParserSub}>
+                      Scan PDF or paste text to auto-fill skills, degrees & work history
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#C084FC" />
+                </TouchableOpacity>
+
                 {profile.resumes.length === 0 && (
                   <View style={styles.emptyCardBox}>
                     <Text style={styles.emptyCardText}>No resume PDF attached yet.</Text>
@@ -454,6 +487,11 @@ export const CareerProfileModal: React.FC<Props> = ({ visible, onClose }) => {
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+
+      <AiResumeParserModal
+        visible={aiParserModalVisible}
+        onClose={() => setAiParserModalVisible(false)}
+      />
     </Modal>
   );
 };
@@ -691,5 +729,34 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 4,
     textAlign: 'center',
+  },
+  aiParserBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(168, 85, 247, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.3)',
+    borderRadius: Radii.md,
+    padding: Spacing.md,
+    marginVertical: Spacing.sm,
+  },
+  aiParserIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(168, 85, 247, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiParserTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#C084FC',
+  },
+  aiParserSub: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
 });

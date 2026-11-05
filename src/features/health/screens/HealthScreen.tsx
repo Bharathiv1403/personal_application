@@ -34,6 +34,8 @@ export const HealthScreen: React.FC = () => {
   // Store bindings
   const todaySteps = useHealthStore((s) => s.todaySteps);
   const stepGoal = useHealthStore((s) => s.stepGoal);
+  const isStepNotificationEnabled = useHealthStore((s) => s.isStepNotificationEnabled);
+  const setStepNotificationEnabled = useHealthStore((s) => s.setStepNotificationEnabled);
   const caloriesBurned = useHealthStore((s) => s.caloriesBurnedKcal);
   const distanceKm = useHealthStore((s) => s.distanceKm);
   const moveMinutes = useHealthStore((s) => s.activeMoveMinutes);
@@ -109,6 +111,11 @@ export const HealthScreen: React.FC = () => {
   );
   const isScreenLimitExceeded = usedMinutes >= dailyScreenLimitMinutes;
 
+  const handleToggleStepNotification = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setStepNotificationEnabled(!isStepNotificationEnabled);
+  };
+
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -144,6 +151,36 @@ export const HealthScreen: React.FC = () => {
 
         {/* Google Fit Circular Steps Card */}
         <GlassCard variant="highlight" style={styles.stepRingCard}>
+          {/* Card Top Bar with Notification Close / Status Pill */}
+          <View style={styles.stepCardTopBar}>
+            <Text style={styles.stepCardTopTitle}>Pedometer</Text>
+            <TouchableOpacity
+              style={[
+                styles.notifToggleChip,
+                isStepNotificationEnabled ? styles.notifToggleChipActive : styles.notifToggleChipMuted,
+              ]}
+              onPress={handleToggleStepNotification}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              {isStepNotificationEnabled ? (
+                <>
+                  <Ionicons name="close-circle" size={13} color="#EF4444" />
+                  <Text style={[styles.notifToggleText, { color: '#EF4444', fontWeight: '700' }]}>
+                    Close Alert ✕
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="notifications-outline" size={12} color={Colors.textMuted} />
+                  <Text style={[styles.notifToggleText, { color: Colors.textMuted }]}>
+                    Alert OFF
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.ringVisualContainer}>
             <View style={[styles.ringOuterCircle, percentGoal >= 100 && styles.ringGoalReached]}>
               <View style={styles.ringInnerCircle}>
@@ -170,7 +207,30 @@ export const HealthScreen: React.FC = () => {
             >
               <Ionicons name="sync" size={14} color={Colors.cyan} />
               <Text style={[styles.stepActionBtnText, { color: Colors.cyan }]}>
-                Sync / Adjust Steps
+                Sync / Adjust
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.stepActionBtn,
+                isStepNotificationEnabled ? styles.stepActionBtnDanger : styles.stepActionBtnSuccess,
+                { flex: 1 },
+              ]}
+              onPress={handleToggleStepNotification}
+            >
+              <Ionicons
+                name={isStepNotificationEnabled ? 'close-circle-outline' : 'notifications-outline'}
+                size={14}
+                color={isStepNotificationEnabled ? Colors.danger : Colors.primary}
+              />
+              <Text
+                style={[
+                  styles.stepActionBtnText,
+                  { color: isStepNotificationEnabled ? Colors.danger : Colors.primary },
+                ]}
+              >
+                {isStepNotificationEnabled ? 'Close Alert ✕' : 'Show Alert 🔔'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -204,9 +264,9 @@ export const HealthScreen: React.FC = () => {
                 <Ionicons name="phone-portrait-outline" size={20} color={Colors.cyan} />
               </View>
               <View>
-                <Text style={styles.screenTimeTitle}>Screen Time & Limits</Text>
+                <Text style={styles.screenTimeTitle}>AAYON Focus & Screen Limit</Text>
                 <Text style={styles.screenTimeSubtitle}>
-                  Usage Limiter & Intent Audit
+                  In-App Mindful Usage Limiter
                 </Text>
               </View>
             </View>
@@ -215,6 +275,14 @@ export const HealthScreen: React.FC = () => {
               label={isScreenLimitExceeded ? 'Limit Reached ⚠️' : 'Within Limit 🌿'}
               variant={isScreenLimitExceeded ? 'danger' : 'primary'}
             />
+          </View>
+
+          {/* Scope note */}
+          <View style={styles.scopeClarifierRow}>
+            <Ionicons name="information-circle-outline" size={13} color={Colors.cyan} />
+            <Text style={styles.scopeClarifierText}>
+              Tracks active session time inside AAYON to curb over-usage and promote focus.
+            </Text>
           </View>
 
           {/* Time Display */}
@@ -646,8 +714,61 @@ const styles = StyleSheet.create({
   },
   stepRingCard: {
     alignItems: 'center',
-    paddingVertical: Spacing.xl,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
     marginBottom: Spacing.lg,
+  },
+  stepCardTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: Spacing.sm,
+  },
+  stepCardTopTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  notifToggleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+  },
+  notifToggleChipActive: {
+    backgroundColor: 'rgba(239, 68, 68, 0.14)',
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+  },
+  notifToggleChipMuted: {
+    backgroundColor: 'rgba(148, 163, 184, 0.08)',
+    borderColor: 'rgba(148, 163, 184, 0.2)',
+  },
+  notifToggleText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  notifCloseIconCircle: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'rgba(239, 68, 68, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
+  },
+  stepActionBtnDanger: {
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+  },
+  stepActionBtnSuccess: {
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
   },
   ringVisualContainer: {
     alignItems: 'center',
@@ -784,6 +905,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textSecondary,
     marginTop: 1,
+  },
+  scopeClarifierRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(6, 182, 212, 0.08)',
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: Radii.sm,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  scopeClarifierText: {
+    fontSize: 10,
+    color: Colors.cyan,
+    flex: 1,
+    lineHeight: 14,
   },
   screenTimeNumbersRow: {
     flexDirection: 'row',

@@ -23,6 +23,7 @@ import { useSidebarStore } from '@/core/state/sidebar-store';
 import { useEnglishLearningStore } from '@/features/learning/state/english-learning-store';
 import { useMessageWriterStore } from '@/features/career/state/message-writer-store';
 import { useVaultStore } from '@/features/vault/state/vault-store';
+import { useTamilCalendarStore } from '@/features/calendar/state/tamil-calendar-store';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(335, Math.round(SCREEN_WIDTH * 0.84));
@@ -118,6 +119,20 @@ export const AppSidebarDrawer: React.FC = () => {
   ];
 
   const hiddenTools = [
+    {
+      id: 'tamil-calendar',
+      name: 'Tamil Calendar & Panchangam 🕉️',
+      sub: 'தினசரி நாள்காட்டி, நல்ல நேரம் & பஞ்சாங்கம்',
+      icon: 'calendar-outline' as const,
+      color: '#F59E0B',
+      tag: 'தமிழ்',
+      action: () => {
+        closeSidebar();
+        setTimeout(() => {
+          useTamilCalendarStore.getState().openModal();
+        }, 150);
+      },
+    },
     {
       id: 'english-daily',
       name: 'English Daily Guide',
