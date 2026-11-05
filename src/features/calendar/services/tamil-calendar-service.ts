@@ -76,6 +76,31 @@ export interface DailyCalendarData {
   thirukkural: ThirukkuralData;
 }
 
+export interface MonthDayItem {
+  date: Date;
+  dayNumber: number; // 1-31
+  isCurrentMonth: boolean;
+  isToday: boolean;
+  dailyData: DailyCalendarData;
+}
+
+export interface MonthEventItem {
+  day: number;
+  date: Date;
+  name: string;
+  type: 'festival' | 'viratham' | 'muhurtham';
+}
+
+export interface MonthCalendarData {
+  year: number;
+  month: number; // 0-11
+  englishMonthName: string; // "November 2026"
+  tamilMonthNames: string; // e.g. "ஐப்பசி – கார்த்திகை"
+  days: MonthDayItem[];
+  subhaMuhurthamDays: MonthDayItem[];
+  festivalsAndVirathams: MonthEventItem[];
+}
+
 // 60 Tamil Years (Jovian Cycle)
 const TAMIL_YEARS = [
   { tamil: 'பிரபவ', english: 'Prabhava' },
@@ -819,6 +844,112 @@ export class TamilCalendarService {
       festivals,
       isSubhaMuhurtham,
       thirukkural,
+    };
+  }
+
+  /**
+   * Generates complete Month Grid and Tamil panchangam highlights for any year and month (0-indexed).
+   */
+  public static getMonthCalendar(year: number, month: number): MonthCalendarData {
+    const today = new Date();
+    const isCurrentYearMonth = today.getFullYear() === year && today.getMonth() === month;
+    const todayDate = today.getDate();
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const totalDaysInMonth = lastDay.getDate();
+
+    const firstDayWeekIndex = firstDay.getDay(); // 0 = Sun, ..., 6 = Sat
+
+    const days: MonthDayItem[] = [];
+    const tamilMonthsSet = new Set<string>();
+    const subhaMuhurthamDays: MonthDayItem[] = [];
+    const festivalsAndVirathams: MonthEventItem[] = [];
+
+    // Previous month padding
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = firstDayWeekIndex - 1; i >= 0; i--) {
+      const prevDate = new Date(year, month - 1, prevMonthLastDay - i);
+      const data = this.getDailyCalendar(prevDate);
+      days.push({
+        date: prevDate,
+        dayNumber: prevDate.getDate(),
+        isCurrentMonth: false,
+        isToday: false,
+        dailyData: data,
+      });
+    }
+
+    // Current month days
+    for (let d = 1; d <= totalDaysInMonth; d++) {
+      const curDate = new Date(year, month, d);
+      const data = this.getDailyCalendar(curDate);
+      const isToday = isCurrentYearMonth && d === todayDate;
+
+      tamilMonthsSet.add(data.tamilDate.tamilMonth);
+
+      const dayItem: MonthDayItem = {
+        date: curDate,
+        dayNumber: d,
+        isCurrentMonth: true,
+        isToday,
+        dailyData: data,
+      };
+
+      days.push(dayItem);
+
+      if (data.isSubhaMuhurtham) {
+        subhaMuhurthamDays.push(dayItem);
+      }
+
+      data.festivals.forEach((f) => {
+        festivalsAndVirathams.push({
+          day: d,
+          date: curDate,
+          name: f,
+          type: 'festival',
+        });
+      });
+
+      data.virathams.forEach((v) => {
+        festivalsAndVirathams.push({
+          day: d,
+          date: curDate,
+          name: v,
+          type: 'viratham',
+        });
+      });
+    }
+
+    // Next month padding to fill grid to multiple of 7
+    const remainingDays = (7 - (days.length % 7)) % 7;
+    for (let n = 1; n <= remainingDays; n++) {
+      const nextDate = new Date(year, month + 1, n);
+      const data = this.getDailyCalendar(nextDate);
+      days.push({
+        date: nextDate,
+        dayNumber: n,
+        isCurrentMonth: false,
+        isToday: false,
+        dailyData: data,
+      });
+    }
+
+    const monthNamesEn = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const englishMonthName = `${monthNamesEn[month]} ${year}`;
+    const tamilMonthNames = Array.from(tamilMonthsSet).join(' – ');
+
+    return {
+      year,
+      month,
+      englishMonthName,
+      tamilMonthNames,
+      days,
+      subhaMuhurthamDays,
+      festivalsAndVirathams,
     };
   }
 }
