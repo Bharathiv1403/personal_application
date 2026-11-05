@@ -77,7 +77,7 @@ export const AiResumeParserModal: React.FC<Props> = ({ visible, onClose, onAppli
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
 
     try {
-      setScanningStatus('AI is extracting skills, education & experience...');
+      setScanningStatus('Extracting text & decoding PDF layout...');
       const result = await AIResumeParserService.parseResumeFromUri(
         selectedFile.uri,
         selectedFile.name
@@ -87,7 +87,11 @@ export const AiResumeParserModal: React.FC<Props> = ({ visible, onClose, onAppli
         setParsedData(result.data);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       } else {
-        Alert.alert('Scan Incomplete', 'Could not extract complete details. Try pasting resume text.');
+        Alert.alert(
+          'Scan Incomplete',
+          result.error ||
+            'Could not extract text from this PDF file. Try pasting resume text or tap "1-Tap Load Master Profile".'
+        );
       }
     } catch {
       Alert.alert('Error', 'Failed to scan resume. Check network or try pasting text.');
@@ -112,7 +116,7 @@ export const AiResumeParserModal: React.FC<Props> = ({ visible, onClose, onAppli
         setParsedData(result.data);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       } else {
-        Alert.alert('Scan Incomplete', 'Could not parse text accurately.');
+        Alert.alert('Scan Incomplete', result.error || 'Could not parse text accurately.');
       }
     } catch {
       Alert.alert('Error', 'Failed to analyze text.');
@@ -122,6 +126,12 @@ export const AiResumeParserModal: React.FC<Props> = ({ visible, onClose, onAppli
     }
   };
 
+  const handleLoadMasterProfile = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    const master = AIResumeParserService.getMasterProfileData();
+    setParsedData(master);
+  };
+
   const handleApplyToProfile = () => {
     if (!parsedData) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -129,14 +139,24 @@ export const AiResumeParserModal: React.FC<Props> = ({ visible, onClose, onAppli
     // 1. Populate Candidate Profile Store
     applyParsedResumeData(parsedData);
 
-    // 2. Also save as an uploaded resume entry if a file was selected
+    // 2. Also save as an uploaded resume entry if a file was selected or master profile
     if (selectedFile) {
       addResumeItem({
         name: selectedFile.name.replace(/\.[^/.]+$/, ''),
-        targetRole: parsedData.targetRole || 'Software Engineer',
+        targetRole: parsedData.targetRole || 'Frontend Developer',
         fileName: selectedFile.name,
         uri: selectedFile.uri,
         fileSize: selectedFile.size || null,
+        uploadedAt: new Date().toISOString().split('T')[0],
+        isDefault: true,
+      });
+    } else {
+      addResumeItem({
+        name: 'Master Profile (Bharathi V)',
+        targetRole: parsedData.targetRole || 'Frontend Developer | Team Lead',
+        fileName: 'cv.md',
+        uri: '',
+        fileSize: null,
         uploadedAt: new Date().toISOString().split('T')[0],
         isDefault: true,
       });
@@ -233,6 +253,29 @@ export const AiResumeParserModal: React.FC<Props> = ({ visible, onClose, onAppli
                 <Text style={styles.scanningTitle}>AI Scanning in Progress...</Text>
                 <Text style={styles.scanningSubtitle}>{scanningStatus}</Text>
               </View>
+            )}
+
+            {/* 1-Tap Load Master Profile (From career-ops Source of Truth) */}
+            {!isScanning && !parsedData && (
+              <TouchableOpacity
+                style={styles.masterProfileBanner}
+                onPress={handleLoadMasterProfile}
+                activeOpacity={0.85}
+              >
+                <View style={styles.masterProfileIcon}>
+                  <Ionicons name="flash" size={20} color="#F59E0B" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.masterProfileTitle}>1-Tap Load Master Profile</Text>
+                    <Badge label="CAREER-OPS" variant="purple" />
+                  </View>
+                  <Text style={styles.masterProfileSub}>
+                    Verified Facts: Bharathi V • Sagasoft Lead • MCA & B.Sc • 24+ Skills
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
             )}
 
             {/* TAB 1: UPLOAD FILE */}
@@ -486,6 +529,36 @@ const styles = StyleSheet.create({
   },
   bodyScroll: {
     maxHeight: 520,
+  },
+  masterProfileBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+    borderRadius: Radii.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: 12,
+  },
+  masterProfileIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  masterProfileTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  masterProfileSub: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 15,
   },
   uploadArea: {
     paddingVertical: Spacing.sm,

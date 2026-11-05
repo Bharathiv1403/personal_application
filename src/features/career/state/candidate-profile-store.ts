@@ -341,7 +341,10 @@ export const useCandidateProfileStore = create<CandidateProfileState>()(
             );
           });
 
-          // 3. Convert and merge educations
+          // 3. Convert and merge educations (filter out any legacy placeholder mock records)
+          const cleanExistingEdu = state.educations.filter(
+            (e) => !e.college.includes('University / Institute') && !(e.degree.includes('Computer Science & Engineering') && !e.college)
+          );
           const newEduRecords: EducationRecord[] = (data.educations || []).map((edu, idx) => ({
             id: `edu-parsed-${Date.now()}-${idx}`,
             qualification: edu.qualification || 'Degree',
@@ -352,10 +355,20 @@ export const useCandidateProfileStore = create<CandidateProfileState>()(
             grade: edu.grade || '',
             status: 'Completed',
           }));
-          const mergedEducations =
-            newEduRecords.length > 0 ? [...state.educations, ...newEduRecords] : state.educations;
+          const mergedEducations = [...cleanExistingEdu];
+          newEduRecords.forEach((newEdu) => {
+            const exists = mergedEducations.some(
+              (e) =>
+                e.qualification.toLowerCase() === newEdu.qualification.toLowerCase() &&
+                (e.college.toLowerCase() === newEdu.college.toLowerCase() ||
+                  e.degree.toLowerCase() === newEdu.degree.toLowerCase())
+            );
+            if (!exists) {
+              mergedEducations.push(newEdu);
+            }
+          });
 
-          // 4. Convert and merge experiences
+          // 4. Convert and merge experiences (deduplicated)
           const newExpRecords: WorkExperienceRecord[] = (data.experiences || []).map((exp, idx) => ({
             id: `exp-parsed-${Date.now()}-${idx}`,
             companyName: exp.companyName,
@@ -369,8 +382,17 @@ export const useCandidateProfileStore = create<CandidateProfileState>()(
             responsibilities: exp.responsibilities || '',
             skillsUsed: exp.skillsUsed || data.skills.slice(0, 4),
           }));
-          const mergedExperiences =
-            newExpRecords.length > 0 ? [...state.experiences, ...newExpRecords] : state.experiences;
+          const mergedExperiences = [...state.experiences];
+          newExpRecords.forEach((newExp) => {
+            const exists = mergedExperiences.some(
+              (e) =>
+                e.companyName.toLowerCase() === newExp.companyName.toLowerCase() &&
+                e.jobTitle.toLowerCase() === newExp.jobTitle.toLowerCase()
+            );
+            if (!exists) {
+              mergedExperiences.push(newExp);
+            }
+          });
 
           // 5. Merge preferences
           const updatedPrefs: JobPreferences = {
