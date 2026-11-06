@@ -377,7 +377,7 @@ export const useCandidateProfileStore = create<CandidateProfileState>()(
             startDate: exp.startDate,
             endDate: exp.endDate,
             isCurrentJob: exp.isCurrentJob ?? false,
-            workLocation: exp.workLocation || data.currentCity || 'Chennai',
+            workLocation: exp.workLocation || data.currentCity || '',
             workMode: exp.workMode || 'Hybrid',
             responsibilities: exp.responsibilities || '',
             skillsUsed: exp.skillsUsed || data.skills.slice(0, 4),
@@ -400,7 +400,7 @@ export const useCandidateProfileStore = create<CandidateProfileState>()(
             targetJobTitles: Array.from(
               new Set([
                 ...(state.preferences.targetJobTitles || []),
-                ...(data.suggestedPreferences?.targetJobTitles || [data.targetRole || 'Software Engineer']),
+                ...(data.suggestedPreferences?.targetJobTitles || (data.targetRole ? [data.targetRole] : [])),
               ])
             ),
             targetKeywords: Array.from(
@@ -412,7 +412,7 @@ export const useCandidateProfileStore = create<CandidateProfileState>()(
             preferredLocations: Array.from(
               new Set([
                 ...(state.preferences.preferredLocations || []),
-                ...(data.suggestedPreferences?.preferredLocations || (data.currentCity ? [data.currentCity] : ['Chennai', 'Remote'])),
+                ...(data.suggestedPreferences?.preferredLocations || (data.currentCity ? [data.currentCity] : ['Remote'])),
               ])
             ),
           };

@@ -143,15 +143,16 @@ export const CAREER_OPS_MASTER_PROFILE: ParsedResumeResult = {
 
 const COMMON_TECH_SKILLS = [
   'React Native', 'React', 'TypeScript', 'JavaScript', 'Node.js', 'Express',
-  'Next.js', 'Vue.js', 'Vue 3', 'Pinia', 'Python', 'Django', 'FastAPI', 'Java',
-  'Spring Boot', 'Kotlin', 'Swift', 'Flutter', 'Dart', 'SQL', 'PostgreSQL',
-  'MySQL', 'MongoDB', 'Redis', 'Firebase', 'Firebase Cloud Messaging', 'Supabase',
-  'GraphQL', 'REST APIs', 'AWS', 'Google Cloud', 'Docker', 'Kubernetes',
-  'CI/CD', 'GitLab CI/CD', 'Git', 'GitHub', 'Redux', 'Zustand', 'TanStack React Query',
+  'Next.js', 'Vue.js', 'Vue 3', 'Nuxt.js', 'Angular', 'Svelte', 'Pinia', 'Python', 'Django', 'FastAPI', 'Flask', 'Java',
+  'Spring Boot', 'Kotlin', 'Swift', 'SwiftUI', 'Flutter', 'Dart', 'Go', 'Golang', 'Rust', 'C#', '.NET', 'ASP.NET', 'C++', 'PHP', 'Laravel', 'Ruby',
+  'SQL', 'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'SQLite', 'Firebase', 'Firebase Cloud Messaging', 'Supabase', 'DynamoDB',
+  'GraphQL', 'REST APIs', 'gRPC', 'WebSockets', 'Microservices', 'System Design',
+  'AWS', 'Google Cloud', 'GCP', 'Azure', 'Docker', 'Kubernetes', 'Terraform',
+  'CI/CD', 'GitLab CI/CD', 'GitHub Actions', 'Git', 'GitHub', 'GitLab', 'Redux', 'Zustand', 'TanStack React Query',
   'HTML5', 'CSS3', 'SCSS', 'Sass', 'Tailwind CSS', 'Framer Motion', 'Jest',
-  'Vitest', 'Playwright', 'Cypress', 'Hermes', 'Linux', 'Microservices',
-  'Kafka', 'Android', 'iOS', 'WebSockets', 'UI/UX', 'Figma', 'System Design',
-  'OIDC', 'OAuth2', 'TOTP MFA', 'Sentry', 'SonarQube', 'Power BI', 'Frappe Insights'
+  'Vitest', 'Playwright', 'Cypress', 'Hermes', 'Linux', 'Nginx',
+  'Kafka', 'RabbitMQ', 'Android', 'iOS', 'UI/UX', 'Figma',
+  'OIDC', 'OAuth2', 'TOTP MFA', 'JWT', 'Sentry', 'SonarQube', 'Power BI', 'Frappe Insights'
 ];
 
 /**
@@ -702,7 +703,7 @@ Output ONLY valid JSON. No markdown backticks.`;
 
   /**
    * Accurate Deterministic Offline / Local Regex & Tech Dictionary Parser
-   * NEVER returns fake mock placeholders like "University / Institute"
+   * 100% Dynamic & Generic: Extracts real candidate data without any hardcoding or mock placeholders.
    */
   static deterministicLocalParse(text: string): ParsedResumeResult {
     const lines = text
@@ -710,157 +711,403 @@ Output ONLY valid JSON. No markdown backticks.`;
       .map((l) => l.trim())
       .filter(Boolean);
 
-    // 1. Extract Name (scan top lines for clean human name)
+    // 1. Dynamic Candidate Name extraction (scans top lines for real candidate name)
     let name = '';
-    for (const line of lines.slice(0, 6)) {
+    for (const line of lines.slice(0, 10)) {
+      let clean = line.split(/[|•·\t\n]/)[0].trim();
+      clean = clean.replace(/^(?:Name|Full Name|Candidate Name)\s*[:\-]\s*/i, '').trim();
       if (
-        line.length >= 2 &&
-        line.length <= 40 &&
-        !line.includes('@') &&
-        !line.includes('http') &&
-        !line.includes('+91') &&
-        !line.match(/\b(resume|curriculum|vitae|summary|portfolio|github|linkedin|page|developer|engineer)\b/i)
+        clean.length >= 2 &&
+        clean.length <= 40 &&
+        !clean.includes('@') &&
+        !clean.includes('http') &&
+        !clean.includes('www.') &&
+        !clean.includes('.com') &&
+        !clean.match(/\+?\d[\d\s\-]{6,}/) &&
+        !clean.match(
+          /\b(resume|curriculum|vitae|summary|objective|profile|experience|skills|education|projects|contact|portfolio|page)\b/i
+        ) &&
+        !clean.match(/^(developer|engineer|lead|architect|manager|designer|analyst)$/i) &&
+        /^[A-Za-z][A-Za-z\s\.\-'\''`]{1,35}$/.test(clean)
       ) {
-        name = line;
+        name = clean;
         break;
       }
     }
 
-    // 2. Email & Phone
+    // 2. Email extraction
     const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-    const phoneMatch = text.match(/(?:\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}/);
 
-    // 3. URLs
-    const linkedinMatch = text.match(/https?:\/\/(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+/i);
-    const githubMatch = text.match(/https?:\/\/(?:www\.)?github\.com\/[a-zA-Z0-9_-]+/i);
-    const portfolioMatch = text.match(/https?:\/\/[a-zA-Z0-9_-]+(?:\.pages\.dev|\.vercel\.app|\.dev|\.com)/i);
-
-    // 4. City & Location
-    let currentCity = '';
-    const textLower = text.toLowerCase();
-    if (textLower.includes('viluppuram')) {
-      currentCity = 'Viluppuram, Tamil Nadu, India';
-    } else if (textLower.includes('chennai')) {
-      currentCity = 'Chennai, Tamil Nadu, India';
-    } else if (textLower.includes('bengaluru') || textLower.includes('bangalore')) {
-      currentCity = 'Bengaluru, Karnataka, India';
-    } else if (textLower.includes('coimbatore')) {
-      currentCity = 'Coimbatore, Tamil Nadu, India';
+    // 3. Phone extraction (Indian mobile or international)
+    let phone = '';
+    const indianMatch = text.match(/(?:\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}/);
+    if (indianMatch) {
+      phone = indianMatch[0].trim();
+    } else {
+      const tenDigit = text.match(/\b[6-9]\d{9}\b/);
+      if (tenDigit) {
+        phone = tenDigit[0].trim();
+      } else {
+        const intlMatch = text.match(/(?:\+\d{1,3}[\s-]?)?\(?\d{2,4}\)?[\s.-]?\d{3,4}[\s.-]?\d{3,5}/);
+        if (intlMatch && intlMatch[0].replace(/\D/g, '').length >= 10) {
+          phone = intlMatch[0].trim();
+        }
+      }
     }
 
-    // 5. Target Role from subtitle / summary
-    let targetRole = '';
-    const roleLine = lines.find(
-      (l) => /developer|engineer|lead|architect/i.test(l) && !/@/.test(l) && !/experience/i.test(l)
+    // 4. Dynamic URLs (LinkedIn, GitHub, Portfolio)
+    const linkedinMatch = text.match(/https?:\/\/(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_\-\.\/]+/i);
+    const githubMatch = text.match(/https?:\/\/(?:www\.)?github\.com\/[a-zA-Z0-9_\-]+/i);
+    let portfolioUrl = '';
+    const portfolioMatch = text.match(
+      /https?:\/\/(?:www\.)?[a-zA-Z0-9_\-]+\.(?:pages\.dev|vercel\.app|netlify\.app|github\.io|me|dev|io|com)/i
     );
-    if (roleLine) {
-      const parts = roleLine.split(/[|•·-]/);
-      targetRole = parts[0].trim();
+    if (
+      portfolioMatch &&
+      !portfolioMatch[0].includes('linkedin.com') &&
+      !portfolioMatch[0].includes('github.com')
+    ) {
+      portfolioUrl = portfolioMatch[0];
+    }
+
+    // 5. Dynamic Location / City extraction
+    let currentCity = '';
+    for (const line of lines.slice(0, 15)) {
+      const locMatch = line.match(/^(?:Location|Address|City|Current Location)\s*[:\-]\s*(.+)$/i);
+      if (locMatch && locMatch[1].trim().length > 2) {
+        currentCity = locMatch[1].trim();
+        break;
+      }
+    }
+    if (!currentCity) {
+      const cityRegex =
+        /\b(Viluppuram|Chennai|Bengaluru|Bangalore|Hyderabad|Pune|Mumbai|Delhi|Noida|Gurgaon|Coimbatore|Madurai|Trichy|Salem|Kochi|Trivandrum|Kolkata|Ahmedabad|Jaipur|Chandigarh|San Francisco|New York|Seattle|Austin|Chicago|Boston|London|Berlin|Munich|Amsterdam|Singapore|Dubai|Sydney|Toronto|Vancouver)\b/i;
+      for (const line of lines.slice(0, 15)) {
+        const parts = line.split(/[|•·\t]/).map((p) => p.trim());
+        for (const part of parts) {
+          if (
+            cityRegex.test(part) &&
+            !part.includes('@') &&
+            !part.includes('http') &&
+            part.length <= 60
+          ) {
+            currentCity = part;
+            break;
+          }
+        }
+        if (currentCity) break;
+      }
+    }
+
+    // 6. Dynamic Target Role extraction
+    let targetRole = '';
+    for (const line of lines.slice(0, 15)) {
+      const rolePrefixMatch = line.match(/^(?:Target Role|Role|Designation|Title|Position)\s*[:\-]\s*(.+)$/i);
+      if (rolePrefixMatch && rolePrefixMatch[1].trim().length > 3) {
+        targetRole = rolePrefixMatch[1].trim();
+        break;
+      }
     }
     if (!targetRole) {
-      if (/frontend/i.test(text)) targetRole = 'Frontend Developer | Team Lead';
-      else if (/react native|mobile/i.test(text)) targetRole = 'React Native Mobile Developer';
-      else if (/full stack|fullstack/i.test(text)) targetRole = 'Full Stack Developer';
+      for (const line of lines.slice(0, 6)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.includes('@') || trimmed.includes('http')) continue;
+        if (
+          /\b(developer|engineer|lead|architect|manager|designer|analyst|specialist|consultant|scientist|programmer)\b/i.test(
+            trimmed
+          ) &&
+          !/\b(experience|history|summary|objective|skills|projects|education)\b/i.test(trimmed) &&
+          trimmed.length <= 60
+        ) {
+          targetRole = trimmed;
+          break;
+        }
+      }
+    }
+    if (!targetRole) {
+      if (/react native|mobile (?:app\s+)?developer/i.test(text)) targetRole = 'React Native Developer';
+      else if (/frontend (?:developer|engineer)|front-end/i.test(text)) targetRole = 'Frontend Developer';
+      else if (/backend (?:developer|engineer)|back-end/i.test(text)) targetRole = 'Backend Developer';
+      else if (/full\s*stack (?:developer|engineer)/i.test(text)) targetRole = 'Full Stack Developer';
+      else if (/software (?:developer|engineer)/i.test(text)) targetRole = 'Software Engineer';
+      else if (/data (?:analyst|scientist|engineer)/i.test(text)) targetRole = 'Data Analyst';
     }
 
-    // 6. Years of Experience
+    // 7. Dynamic Years of Experience extraction
     let yearsOfExperience = '';
-    const expMatch = text.match(/(\d+(?:\.\d+)?)\+?\s*years(?:\s*of\s*experience)?/i);
+    const expMatch = text.match(/(\d+(?:\.\d+)?)\+?\s*(?:years|yrs)(?:\s*of)?\s*(?:experience|exp)?/i);
     if (expMatch) {
       yearsOfExperience = `${expMatch[1]}+ years`;
+    } else if (/\b(?:Fresher|Entry[\s-]level)\b/i.test(text)) {
+      yearsOfExperience = 'Fresher';
     }
 
-    // 7. Tech Skills matching
+    // 8. Dynamic Tech Skills matching
     const matchedSkills: string[] = [];
     COMMON_TECH_SKILLS.forEach((skill) => {
       const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+      const regex = new RegExp(`(?:^|[^a-zA-Z0-9_#+])${escaped}(?:[^a-zA-Z0-9_#+]|$)`, 'i');
       if (regex.test(text)) {
         matchedSkills.push(skill);
       }
     });
+    const uniqueSkills = Array.from(new Set(matchedSkills));
 
-    // 8. Education extraction (real entries only)
+    // 9. Dynamic Education extraction (no hardcoded schools or degrees)
     const educations: ParsedResumeResult['educations'] = [];
-    if (/MCA/i.test(text)) {
-      const college = /Alagappa\s+University/i.test(text) ? 'Alagappa University' : '';
-      educations.push({
-        qualification: 'MCA',
-        degree: 'Master of Computer Applications',
-        college,
-        graduationYear: '2026',
-        grade: 'Pursuing',
-      });
-    }
-    if (/B\.Sc/i.test(text)) {
-      const college = /Thiruvalluvar\s+University/i.test(text) ? 'Thiruvalluvar University' : '';
-      educations.push({
-        qualification: 'B.Sc',
-        degree: 'B.Sc Statistics',
-        college,
-        graduationYear: '2023',
-      });
-    } else if (/B\.E|B\.Tech/i.test(text)) {
-      educations.push({
-        qualification: 'B.Tech',
-        degree: 'Engineering',
-        college: '',
-        graduationYear: '',
-      });
-    }
+    const DEGREE_PATTERNS = [
+      { qual: 'B.Tech', re: /\b(?:B\.?Tech(?:nology)?|Bachelor of Technology)\b/i },
+      { qual: 'B.E', re: /\b(?:B\.?E\.?|Bachelor of Engineering)\b/i },
+      { qual: 'B.Sc', re: /\b(?:B\.?Sc\.?|Bachelor of Science)\b/i },
+      { qual: 'BCA', re: /\b(?:B\.?C\.?A\.?|Bachelor of Computer Applications)\b/i },
+      { qual: 'B.Com', re: /\b(?:B\.?Com\.?|Bachelor of Commerce)\b/i },
+      { qual: 'BBA', re: /\b(?:B\.?B\.?A\.?|Bachelor of Business Administration)\b/i },
+      { qual: 'M.Tech', re: /\b(?:M\.?Tech(?:nology)?|Master of Technology)\b/i },
+      { qual: 'M.E', re: /\b(?:M\.?E\.?|Master of Engineering)\b/i },
+      { qual: 'MCA', re: /\b(?:M\.?C\.?A\.?|Master of Computer Applications)\b/i },
+      { qual: 'M.Sc', re: /\b(?:M\.?Sc\.?|Master of Science)\b/i },
+      { qual: 'MBA', re: /\b(?:M\.?B\.?A\.?|Master of Business Administration)\b/i },
+      { qual: 'MS', re: /\b(?:M\.?S\.?|Master of Science)\b/i },
+      { qual: 'Ph.D', re: /\b(?:Ph\.?D\.?|Doctor of Philosophy)\b/i },
+      { qual: 'Diploma', re: /\bDiploma\b/i },
+    ];
+    const UNIV_KEYWORDS =
+      /\b(University|Institute|College|School|Academy|Campus|Polytechnic|IIT|NIT|BITS|IIIT)\b/i;
 
-    // 9. Work Experience extraction (real entries only)
-    const experiences: ParsedResumeResult['experiences'] = [];
-    if (/Sagasoft/i.test(text)) {
-      experiences.push({
-        companyName: 'Sagasoft Technologies Pvt Ltd',
-        jobTitle: 'Frontend Developer & UI/UX Developer (Frontend Team Lead)',
-        employmentType: 'Full-time',
-        startDate: 'Aug 2024',
-        endDate: 'Present',
-        isCurrentJob: true,
-        workLocation: 'Viluppuram, Tamil Nadu',
-        workMode: 'Hybrid',
-        responsibilities:
-          'Led frontend team, Vue.js re-architecture across 8 modules, Figma UI/UX design systems, REST API integration, OIDC/OAuth2 MFA.',
-        skillsUsed: ['Vue.js', 'React', 'TypeScript', 'Next.js', 'REST APIs', 'OIDC', 'Figma'],
-      });
-      if (/Data Analyst/i.test(text) || /Feb 2024/i.test(text)) {
-        experiences.push({
-          companyName: 'Sagasoft Technologies Pvt Ltd',
-          jobTitle: 'Data Analyst Intern',
-          employmentType: 'Internship',
-          startDate: 'Feb 2024',
-          endDate: 'Jul 2024',
-          isCurrentJob: false,
-          workLocation: 'Viluppuram, Tamil Nadu',
-          workMode: 'On-site',
-          responsibilities: 'Built Power BI dashboards for IPL statistical analysis & Frappe Insights reporting.',
-          skillsUsed: ['Power BI', 'Frappe Insights', 'Python', 'Data Analytics'],
-        });
+    let eduStartIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (/^(?:education|academics|qualifications|academic background)\b/i.test(lines[i])) {
+        eduStartIdx = i;
+        break;
+      }
+    }
+    const eduScanRange =
+      eduStartIdx !== -1 ? lines.slice(eduStartIdx, Math.min(eduStartIdx + 30, lines.length)) : lines;
+
+    for (let i = 0; i < eduScanRange.length; i++) {
+      const line = eduScanRange[i];
+      let matchedDeg: string | null = null;
+      for (const dp of DEGREE_PATTERNS) {
+        if (dp.re.test(line)) {
+          matchedDeg = dp.qual;
+          break;
+        }
+      }
+
+      if (matchedDeg) {
+        const contextLines = [eduScanRange[i - 1] || '', line, eduScanRange[i + 1] || ''];
+
+        let fullDegree = line.replace(/^(?:Degree|Education|Course)\s*[:\-]\s*/i, '').trim();
+
+        let college = '';
+        for (const cl of contextLines) {
+          if (UNIV_KEYWORDS.test(cl) && !DEGREE_PATTERNS.some((d) => d.re.test(cl))) {
+            college = cl.split(/[|•·\t]/)[0].trim();
+            break;
+          } else if (UNIV_KEYWORDS.test(cl)) {
+            const parts = cl.split(/[,|•·\t]/).map((p) => p.trim());
+            const univPart = parts.find(
+              (p) => UNIV_KEYWORDS.test(p) && !DEGREE_PATTERNS.some((d) => d.re.test(p))
+            );
+            if (univPart) {
+              college = univPart;
+              break;
+            }
+          }
+        }
+
+        let gradYear = '';
+        const yearMatches = contextLines.join(' ').match(/\b(19\d{2}|20\d{2})\b/g);
+        if (yearMatches && yearMatches.length > 0) {
+          gradYear = yearMatches[yearMatches.length - 1];
+        }
+
+        let grade = '';
+        const gradeMatch = contextLines
+          .join(' ')
+          .match(
+            /(?:CGPA|GPA|Grade|Score)\s*[:\-]?\s*(\d+(?:\.\d+)?(?:\s*\/\s*(?:10|4))?|\d+%)|(\b\d+(?:\.\d+)?%|\b(?:Pursuing|First Class|Distinction)\b)/i
+          );
+        if (gradeMatch) {
+          grade = (gradeMatch[1] || gradeMatch[2] || '').trim();
+        }
+
+        const exists = educations.some(
+          (e) => e.qualification === matchedDeg && e.graduationYear === gradYear
+        );
+        if (!exists) {
+          educations.push({
+            qualification: matchedDeg,
+            degree: fullDegree || matchedDeg,
+            college,
+            graduationYear: gradYear,
+            grade: grade || undefined,
+          });
+        }
       }
     }
 
-    const uniqueSkills = Array.from(new Set(matchedSkills));
+    // 10. Dynamic Work Experience extraction (no hardcoded companies or roles)
+    const experiences: ParsedResumeResult['experiences'] = [];
+    let expStartIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (
+        /^(?:work\s+experience|professional\s+experience|experience|employment\s+history)\b/i.test(lines[i])
+      ) {
+        expStartIdx = i;
+        break;
+      }
+    }
+
+    if (expStartIdx !== -1) {
+      let expEndIdx = lines.length;
+      for (let i = expStartIdx + 1; i < lines.length; i++) {
+        if (/^(?:education|academics|skills|technical skills|projects|certifications|awards)\b/i.test(lines[i])) {
+          expEndIdx = i;
+          break;
+        }
+      }
+
+      const expLines = lines.slice(expStartIdx + 1, expEndIdx);
+      const DATE_RANGE_REGEX =
+        /(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*)?(?:19\d{2}|20\d{2})\s*(?:[\u2013\u2014\-–]|to)\s*(?:Present|Current|Ongoing|(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*)?(?:19\d{2}|20\d{2}))/i;
+      const ROLE_REGEX =
+        /\b(Developer|Engineer|Lead|Architect|Manager|Designer|Analyst|Intern|Specialist|Consultant|Associate|Programmer)\b/i;
+      const COMPANY_REGEX =
+        /\b(Ltd|Limited|Pvt|Inc|Corp|Corporation|LLC|Technologies|Technology|Solutions|Systems|Labs|Studio|Software|Services|Infotech|Google|Amazon|Microsoft|Apple|Meta|Uber|Razorpay|Swiggy|Zomato|Infosys|TCS|Wipro|Cognizant|Accenture)\b/i;
+
+      const dateIndices: number[] = [];
+      for (let i = 0; i < expLines.length; i++) {
+        if (DATE_RANGE_REGEX.test(expLines[i])) {
+          dateIndices.push(i);
+        }
+      }
+
+      for (let k = 0; k < dateIndices.length; k++) {
+        const dIdx = dateIndices[k];
+        const dateLine = expLines[dIdx];
+        const nextDIdx = k + 1 < dateIndices.length ? dateIndices[k + 1] : expLines.length;
+
+        const dateMatch = dateLine.match(DATE_RANGE_REGEX);
+        let startDate = '';
+        let endDate = 'Present';
+        let isCurrentJob = false;
+        if (dateMatch) {
+          const parts = dateMatch[0].split(/\s*(?:[\u2013\u2014\-–]|to)\s*/i);
+          startDate = parts[0]?.trim() || '';
+          endDate = parts[1]?.trim() || 'Present';
+          isCurrentJob = /present|current|ongoing/i.test(endDate);
+        }
+
+        let companyName = '';
+        let jobTitle = '';
+        let workLocation = '';
+
+        const dateLineParts = dateLine.split(/[|•·]/).map((p) => p.trim());
+        for (const part of dateLineParts) {
+          if (ROLE_REGEX.test(part) && !DATE_RANGE_REGEX.test(part)) {
+            jobTitle = part;
+          } else if (COMPANY_REGEX.test(part) && !DATE_RANGE_REGEX.test(part)) {
+            companyName = part;
+          } else if (!DATE_RANGE_REGEX.test(part) && part.length < 35 && !jobTitle && !companyName) {
+            workLocation = part;
+          }
+        }
+
+        for (let prev = dIdx - 1; prev >= Math.max(0, dIdx - 2); prev--) {
+          const pLine = expLines[prev];
+          if (DATE_RANGE_REGEX.test(pLine)) break;
+          if (!jobTitle && ROLE_REGEX.test(pLine)) {
+            jobTitle = pLine;
+          } else if (!companyName) {
+            companyName = pLine;
+          }
+        }
+
+        const respLines: string[] = [];
+        for (let r = dIdx + 1; r < nextDIdx; r++) {
+          const rLine = expLines[r];
+          if (rLine.startsWith('-') || rLine.startsWith('•') || rLine.startsWith('*')) {
+            respLines.push(rLine.replace(/^[-•*]\s*/, '').trim());
+          } else if (respLines.length < 3 && rLine.length > 20) {
+            respLines.push(rLine.trim());
+          }
+        }
+
+        // Matched skills in this experience
+        const expSkills = uniqueSkills.filter((s) =>
+          new RegExp(`\\b${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(
+            `${dateLine} ${jobTitle} ${respLines.join(' ')}`
+          )
+        );
+
+        if (companyName || jobTitle) {
+          experiences.push({
+            companyName: companyName || 'Company',
+            jobTitle: jobTitle || targetRole || 'Professional',
+            startDate,
+            endDate,
+            isCurrentJob,
+            workLocation,
+            responsibilities: respLines.join('. '),
+            employmentType: /intern/i.test(jobTitle) ? 'Internship' : 'Full-time',
+            workMode: /remote/i.test(`${dateLine} ${respLines.join(' ')}`)
+              ? 'Remote'
+              : /hybrid/i.test(`${dateLine} ${respLines.join(' ')}`)
+                ? 'Hybrid'
+                : 'On-site',
+            skillsUsed: expSkills.length > 0 ? expSkills : uniqueSkills.slice(0, 5),
+          });
+        }
+      }
+    }
+
+    // 11. Calculate yearsOfExperience if not explicit but experiences exist
+    if (!yearsOfExperience && experiences.length > 0) {
+      const allYears: number[] = [];
+      text.replace(/\b(19\d{2}|20\d{2})\b/g, (_, y) => {
+        allYears.push(parseInt(y, 10));
+        return '';
+      });
+      if (allYears.length >= 2) {
+        const minYear = Math.min(...allYears);
+        const maxYear = Math.max(...allYears, new Date().getFullYear());
+        const span = maxYear - minYear;
+        if (span > 0 && span <= 30) {
+          yearsOfExperience = `${span}+ years`;
+        }
+      }
+    }
+
+    // 12. Dynamic Expected CTC (only if explicitly in text)
+    let expectedCTC = '';
+    const ctcMatch = text.match(/(?:expected|current)?\s*(?:ctc|salary)\s*[:\-]?\s*([₹$€£\d\.\s\-\+LPAkK]+)/i);
+    if (ctcMatch && ctcMatch[1].trim().length > 1) {
+      expectedCTC = ctcMatch[1].trim();
+    }
 
     return {
       name,
       email: emailMatch ? emailMatch[0] : '',
-      phone: phoneMatch ? phoneMatch[0] : '',
+      phone,
       currentCity,
-      targetRole: targetRole || 'Frontend Developer',
-      yearsOfExperience: yearsOfExperience || '2+ years',
+      targetRole: targetRole || (experiences[0]?.jobTitle ? experiences[0].jobTitle : ''),
+      yearsOfExperience: yearsOfExperience || '',
       linkedinUrl: linkedinMatch ? linkedinMatch[0] : '',
       githubUrl: githubMatch ? githubMatch[0] : '',
-      portfolioUrl: portfolioMatch ? portfolioMatch[0] : '',
-      expectedCTC: '₹12L - ₹20L INR',
+      portfolioUrl,
+      expectedCTC,
       skills: uniqueSkills,
       educations,
       experiences,
       suggestedPreferences: {
-        targetJobTitles: targetRole ? [targetRole, 'Senior Frontend Engineer'] : ['Frontend Developer'],
+        targetJobTitles: targetRole
+          ? [targetRole]
+          : experiences[0]?.jobTitle
+            ? [experiences[0].jobTitle]
+            : [],
         targetKeywords: uniqueSkills.slice(0, 5),
-        preferredLocations: currentCity ? [currentCity, 'Remote'] : ['Remote', 'Chennai'],
+        preferredLocations: currentCity ? [currentCity, 'Remote'] : ['Remote'],
         workModes: ['Remote', 'Hybrid'],
       },
     };

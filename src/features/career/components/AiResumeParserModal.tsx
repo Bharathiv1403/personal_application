@@ -143,7 +143,7 @@ export const AiResumeParserModal: React.FC<Props> = ({ visible, onClose, onAppli
     if (selectedFile) {
       addResumeItem({
         name: selectedFile.name.replace(/\.[^/.]+$/, ''),
-        targetRole: parsedData.targetRole || 'Frontend Developer',
+        targetRole: parsedData.targetRole || 'Software Professional',
         fileName: selectedFile.name,
         uri: selectedFile.uri,
         fileSize: selectedFile.size || null,
@@ -151,10 +151,13 @@ export const AiResumeParserModal: React.FC<Props> = ({ visible, onClose, onAppli
         isDefault: true,
       });
     } else {
+      const resumeName = parsedData.name
+        ? `${parsedData.name} Resume`
+        : 'Imported Candidate Profile';
       addResumeItem({
-        name: 'Master Profile (Bharathi V)',
-        targetRole: parsedData.targetRole || 'Frontend Developer | Team Lead',
-        fileName: 'cv.md',
+        name: resumeName,
+        targetRole: parsedData.targetRole || 'Software Professional',
+        fileName: 'resume.txt',
         uri: '',
         fileSize: null,
         uploadedAt: new Date().toISOString().split('T')[0],
