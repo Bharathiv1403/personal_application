@@ -293,17 +293,24 @@ export const EnglishLearningModal: React.FC<EnglishLearningModalProps> = ({
 
           {/* Header */}
           <View style={styles.headerRow}>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, marginRight: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.headerTitle}>English Daily Practice 🇬🇧</Text>
-                <Badge label={`Day ${currentDay} Active ⚡`} variant="primary" />
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                  English Daily Practice 🇬🇧
+                </Text>
+                <Badge label={`Day ${currentDay} ⚡`} variant="primary" />
               </View>
-              <Text style={styles.headerSubtitle}>
-                தமிழ் வழி ஆங்கிலம் • Mother Tongue & Learning Language Guide
+              <Text style={styles.headerSubtitle} numberOfLines={1}>
+                தமிழ் வழி ஆங்கிலம் • Mother Tongue Guide
               </Text>
             </View>
-            <TouchableOpacity style={styles.closeBtn} onPress={handleModalClose}>
-              <Ionicons name="close" size={18} color={Colors.textMuted} />
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={handleModalClose}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -1403,10 +1410,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: Radii.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1442,20 +1449,21 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: Radii.full,
     padding: 3,
-    marginBottom: Spacing.md,
-    gap: 4,
+    gap: 6,
   },
   tabBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
+    paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: Radii.full,
+    height: 34,
   },
   tabBtnActive: {
     backgroundColor: Colors.primary,
@@ -1469,7 +1477,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   scrollBody: {
-    paddingBottom: Spacing.xl,
+    paddingBottom: Platform.OS === 'android' ? 56 : 36,
   },
 
   // Day Carousel
@@ -2320,7 +2328,9 @@ const styles = StyleSheet.create({
   },
 
   tabScrollWrap: {
-    marginBottom: Spacing.md,
+    flexGrow: 0,
+    height: 42,
+    marginBottom: Spacing.sm,
   },
 
   // =========================================================================

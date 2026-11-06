@@ -105,16 +105,21 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) =>
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* Header */}
             <View style={styles.sheetHeader}>
-              <View>
-                <Text style={styles.sheetTitle}>Track New Job Application</Text>
-                <Text style={styles.sheetSub}>Add company to your personal ATS pipeline</Text>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.sheetTitle} numberOfLines={1}>
+                  Track New Job Application
+                </Text>
+                <Text style={styles.sheetSub} numberOfLines={1}>
+                  Add company to your personal ATS pipeline
+                </Text>
               </View>
               <TouchableOpacity
                 onPress={onClose}
                 style={styles.closeBtn}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                activeOpacity={0.7}
               >
-                <Ionicons name="close" size={20} color={Colors.textSecondary} />
+                <Ionicons name="close" size={20} color={Colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -361,10 +366,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: Radii.full,
-    backgroundColor: Colors.card,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.cardSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },

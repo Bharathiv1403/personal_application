@@ -37,16 +37,21 @@ export const InHandSalaryModal: React.FC<InHandSalaryModalProps> = ({ visible, o
         <View style={styles.sheetContainer}>
           {/* Header */}
           <View style={styles.sheetHeader}>
-            <View>
-              <Text style={styles.sheetTitle}>In-Hand CTC Salary Calculator</Text>
-              <Text style={styles.sheetSub}>Indian New Tax Regime & Monthly Bank Credit</Text>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={styles.sheetTitle} numberOfLines={1}>
+                In-Hand CTC Salary Calculator
+              </Text>
+              <Text style={styles.sheetSub} numberOfLines={1}>
+                Indian New Tax Regime & Monthly Bank Credit
+              </Text>
             </View>
             <TouchableOpacity
               onPress={onClose}
               style={styles.closeBtn}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              activeOpacity={0.7}
             >
-              <Ionicons name="close" size={20} color={Colors.textSecondary} />
+              <Ionicons name="close" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -131,10 +136,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: Radii.full,
-    backgroundColor: Colors.card,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.cardSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },

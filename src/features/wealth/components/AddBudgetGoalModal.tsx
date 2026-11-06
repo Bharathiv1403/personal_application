@@ -215,16 +215,21 @@ export const AddBudgetGoalModal: React.FC<Props> = ({ visible, onClose }) => {
         <View style={styles.modalContainer}>
           {/* Header */}
           <View style={styles.modalHeader}>
-            <View>
-              <Text style={styles.modalTitle}>Monthly Salary & Expenses</Text>
-              <Text style={styles.modalSubtitle}>{currentMonthName} • Budget Tracker</Text>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={styles.modalTitle} numberOfLines={1}>
+                Monthly Salary & Expenses
+              </Text>
+              <Text style={styles.modalSubtitle} numberOfLines={1}>
+                {currentMonthName} • Budget Tracker
+              </Text>
             </View>
             <TouchableOpacity
               onPress={onClose}
               style={styles.closeButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              activeOpacity={0.7}
             >
-              <Ionicons name="close" size={20} color={Colors.textMuted} />
+              <Ionicons name="close" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -617,9 +622,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',

@@ -192,17 +192,24 @@ export const AiResumeParserModal: React.FC<Props> = ({ visible, onClose, onAppli
         <View style={styles.sheetContainer}>
           {/* Header */}
           <View style={styles.sheetHeader}>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, marginRight: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.sheetTitle}>AI Smart Resume Parser</Text>
+                <Text style={styles.sheetTitle} numberOfLines={1}>
+                  AI Smart Resume Parser
+                </Text>
                 <Badge label="AUTONOMOUS" variant="purple" />
               </View>
-              <Text style={styles.sheetSub}>
+              <Text style={styles.sheetSub} numberOfLines={1}>
                 Upload PDF or paste text to auto-fill your master candidate profile & skills
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color={Colors.textSecondary} />
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeBtn}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -493,9 +500,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtn: {
-    padding: 6,
-    borderRadius: Radii.full,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: Colors.cardSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabBar: {
     flexDirection: 'row',
@@ -758,7 +768,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginTop: Spacing.md,
-    marginBottom: Spacing.lg,
+    marginBottom: Platform.OS === 'android' ? 32 : Spacing.lg,
   },
   resetBtn: {
     paddingVertical: 12,

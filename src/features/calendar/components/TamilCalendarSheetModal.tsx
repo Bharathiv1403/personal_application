@@ -17,12 +17,12 @@ import { MonthDayItem } from '../services/tamil-calendar-service';
 
 const WEEKDAYS_TAMIL = [
   { short: 'ஞா', full: 'ஞாயிறு', isSunday: true },
-  { short: 'திங்', full: 'திங்கள்' },
-  { short: 'செவ்', full: 'செவ்வாய்' },
-  { short: 'புதன்', full: 'புதன்' },
-  { short: 'வியா', full: 'வியாழன்' },
-  { short: 'வெள்', full: 'வெள்ளி' },
-  { short: 'சனி', full: 'சனி' },
+  { short: 'தி', full: 'திங்கள்' },
+  { short: 'செ', full: 'செவ்வாய்' },
+  { short: 'பு', full: 'புதன்' },
+  { short: 'வி', full: 'வியாழன்' },
+  { short: 'வெ', full: 'வெள்ளி' },
+  { short: 'ச', full: 'சனி' },
 ];
 
 export const TamilCalendarSheetModal: React.FC = () => {
@@ -109,16 +109,23 @@ export const TamilCalendarSheetModal: React.FC = () => {
               <View style={styles.omIconBadge}>
                 <Text style={styles.omText}>🕉️</Text>
               </View>
-              <View>
-                <Text style={styles.headerTitle}>தமிழ் நாள்காட்டி & பஞ்சாங்கம்</Text>
-                <Text style={styles.headerSubtitle}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                  தமிழ் நாள்காட்டி & பஞ்சாங்கம்
+                </Text>
+                <Text style={styles.headerSubtitle} numberOfLines={1}>
                   {viewMode === 'daily' ? 'தினசரி நாள்காட்டி (Daily Sheet)' : 'மாதக் காட்டி (Monthly View)'}
                 </Text>
               </View>
             </View>
 
-            <TouchableOpacity style={styles.closeBtn} onPress={closeModal}>
-              <Ionicons name="close" size={20} color={Colors.textMuted} />
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={closeModal}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -131,14 +138,18 @@ export const TamilCalendarSheetModal: React.FC = () => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                   setViewMode('daily');
                 }}
+                activeOpacity={0.8}
               >
                 <Ionicons
                   name="today-outline"
                   size={14}
                   color={viewMode === 'daily' ? Colors.gold : Colors.textMuted}
                 />
-                <Text style={[styles.viewModeText, viewMode === 'daily' && styles.viewModeTextActive]}>
-                  தினசரி நாள்காட்டி
+                <Text
+                  style={[styles.viewModeText, viewMode === 'daily' && styles.viewModeTextActive]}
+                  numberOfLines={1}
+                >
+                  தினசரி (Daily)
                 </Text>
               </TouchableOpacity>
 
@@ -148,14 +159,18 @@ export const TamilCalendarSheetModal: React.FC = () => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                   setViewMode('month');
                 }}
+                activeOpacity={0.8}
               >
                 <Ionicons
                   name="calendar-outline"
                   size={14}
                   color={viewMode === 'month' ? Colors.gold : Colors.textMuted}
                 />
-                <Text style={[styles.viewModeText, viewMode === 'month' && styles.viewModeTextActive]}>
-                  மாதக் காட்டி (Full Month)
+                <Text
+                  style={[styles.viewModeText, viewMode === 'month' && styles.viewModeTextActive]}
+                  numberOfLines={1}
+                >
+                  மாதக் காட்டி (Month)
                 </Text>
               </TouchableOpacity>
             </View>
@@ -626,13 +641,13 @@ export const TamilCalendarSheetModal: React.FC = () => {
               {/* SELECTED DAY SUMMARY INSPECTOR CARD */}
               <View style={styles.selectedDayCard}>
                 <View style={styles.selectedDayCardTop}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.selectedDayDate}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.selectedDayDate} numberOfLines={2}>
                       {selectedDate.getDate()}{' '}
                       {selectedDate.toLocaleDateString('ta-IN', { month: 'long' })}{' '}
                       {selectedDate.getFullYear()} ({data.tamilDate.weekdayTamil})
                     </Text>
-                    <Text style={styles.selectedDayTamil}>
+                    <Text style={styles.selectedDayTamil} numberOfLines={1}>
                       ✨ {data.tamilDate.tamilYear} வருடம் • {data.tamilDate.tamilMonth}{' '}
                       {data.tamilDate.tamilDay}-ஆம் நாள்
                     </Text>
@@ -641,6 +656,8 @@ export const TamilCalendarSheetModal: React.FC = () => {
                   <TouchableOpacity
                     style={styles.openDailySheetBtn}
                     onPress={handleSwitchToDailyForSelected}
+                    activeOpacity={0.8}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     <Text style={styles.openDailySheetBtnText}>தினசரி தாள்</Text>
                     <Ionicons name="arrow-forward" size={13} color="#030712" />
@@ -803,9 +820,11 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   navTitleRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
+    marginRight: 10,
   },
   omIconBadge: {
     width: 38,
@@ -821,7 +840,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     color: Colors.textPrimary,
   },
@@ -832,9 +851,9 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   closeBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -939,7 +958,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.lg,
-    paddingBottom: Platform.OS === 'ios' ? 44 : 28,
+    paddingBottom: Platform.OS === 'ios' ? 60 : 56,
   },
 
   /* TRADITIONAL CALENDAR SHEET CARD */
