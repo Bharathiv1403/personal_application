@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Modal,
   View,
@@ -21,7 +21,12 @@ import { Badge } from '@/core/design-system/primitives/Badge';
 import { AIService } from '@/core/utils/ai-service';
 import { useAiConfigStore } from '@/core/state/ai-config-store';
 import { ApiKeyModal } from '@/core/components/ApiKeyModal';
-import { useJobStore, EnterpriseAtsEvaluation } from '../state/job-store';
+import {
+  useJobStore,
+  EnterpriseAtsEvaluation,
+  mergeCandidateSkills,
+} from '../state/job-store';
+import { useCandidateProfileStore } from '../state/candidate-profile-store';
 
 interface AtsScannerModalProps {
   visible: boolean;
@@ -30,7 +35,19 @@ interface AtsScannerModalProps {
 
 export const AtsScannerModal: React.FC<AtsScannerModalProps> = ({ visible, onClose }) => {
   const calculateJdMatch = useJobStore((s) => s.calculateJdMatch);
-  const resumeSkills = useJobStore((s) => s.myResumeSkills);
+  const storeSkills = useJobStore((s) => s.myResumeSkills);
+  const profileSkills = useCandidateProfileStore((s) => s.skills);
+  const profileSkillsList = useCandidateProfileStore((s) => s.skillsList);
+
+  const resumeSkills = useMemo(
+    () =>
+      mergeCandidateSkills(
+        profileSkills,
+        (profileSkillsList || []).map((s) => s.name),
+        storeSkills
+      ),
+    [profileSkills, profileSkillsList, storeSkills]
+  );
 
   const [jdText, setJdText] = useState('');
   const [isGeneratingBullets, setIsGeneratingBullets] = useState(false);
@@ -42,7 +59,7 @@ export const AtsScannerModal: React.FC<AtsScannerModalProps> = ({ visible, onClo
   const handleScan = () => {
     if (!jdText.trim()) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    const result = calculateJdMatch(jdText);
+    const result = calculateJdMatch(jdText, resumeSkills.length > 0 ? resumeSkills : undefined);
     setScanResult(result);
   };
 
@@ -80,7 +97,11 @@ export const AtsScannerModal: React.FC<AtsScannerModalProps> = ({ visible, onClo
         style={styles.modalOverlay}
       >
         <View style={styles.sheetContainer}>
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: Platform.OS === 'android' ? 24 : Spacing.md }}
+          >
             {/* Header */}
             <View style={styles.sheetHeader}>
               <View style={{ flex: 1, marginRight: 8 }}>
@@ -103,14 +124,27 @@ export const AtsScannerModal: React.FC<AtsScannerModalProps> = ({ visible, onClo
 
             {/* Resume Skills Summary */}
             <View style={styles.skillsBox}>
-              <Text style={styles.skillsBoxTitle}>Your Master Skills Inventory ({resumeSkills.length} Skills):</Text>
-              <View style={styles.skillsWrap}>
-                {resumeSkills.slice(0, 8).map((s) => (
-                  <View key={s} style={styles.skillChip}>
-                    <Text style={styles.skillChipText}>{s}</Text>
-                  </View>
-                ))}
-              </View>
+              <Text style={styles.skillsBoxTitle}>
+                Your Master Skills Inventory ({resumeSkills.length} Skills):
+              </Text>
+              {resumeSkills.length > 0 ? (
+                <View style={styles.skillsWrap}>
+                  {resumeSkills.slice(0, 12).map((s) => (
+                    <View key={s} style={styles.skillChip}>
+                      <Text style={styles.skillChipText}>{s}</Text>
+                    </View>
+                  ))}
+                  {resumeSkills.length > 12 && (
+                    <View style={styles.skillChip}>
+                      <Text style={styles.skillChipText}>+{resumeSkills.length - 12} more</Text>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <Text style={{ fontSize: 11, color: Colors.textMuted, lineHeight: 16 }}>
+                  No skills imported yet. Upload your resume or add skills in Candidate Profile for higher ATS accuracy.
+                </Text>
+              )}
             </View>
 
             {/* Input Box */}

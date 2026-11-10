@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { ScreenContainer } from '@/core/design-system/primitives/ScreenContainer';
@@ -13,6 +13,7 @@ export const SignInScreen: React.FC = () => {
   const [errorShake, setErrorShake] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const user = useAuthStore((s) => s.user);
   const isBiometricSupported = useAuthStore((s) => s.isBiometricSupported);
@@ -23,15 +24,65 @@ export const SignInScreen: React.FC = () => {
   const resetAccount = useAuthStore((s) => s.resetAccount);
 
   const handleGoogleSignIn = async () => {
+    if (isGoogleLoading) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    const googleUser = await GoogleAuthService.promptGoogleSignIn();
-    if (googleUser) {
-      const success = await signInWithGoogle(googleUser);
-      if (success) {
-        setFailedAttempts(0);
-        setLockoutSeconds(0);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setIsGoogleLoading(true);
+
+    try {
+      const outcome = await GoogleAuthService.signInWithGoogle();
+      if (outcome.status === 'success') {
+        const storedEmail = user?.email?.toLowerCase();
+        const incomingEmail = outcome.user.email.toLowerCase();
+
+        // Allow unlocking if email matches stored vault OR upgrading from legacy placeholder
+        if (!storedEmail || storedEmail === 'user@gmail.com' || storedEmail === incomingEmail) {
+          const success = await signInWithGoogle(outcome.user);
+          if (success) {
+            setFailedAttempts(0);
+            setLockoutSeconds(0);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          }
+          return;
+        }
+
+        Alert.alert(
+          'Account Mismatch 🔒',
+          `This vault belongs to ${user?.email}, while you signed into Google as ${outcome.user.email}.\n\nPlease unlock with your 4-digit PIN / Biometrics or Reset credentials to switch accounts.`
+        );
+        return;
       }
+
+      const fallbackButtons: {
+        text: string;
+        style?: 'default' | 'cancel' | 'destructive';
+        onPress?: () => void;
+      }[] = [{ text: 'Use 4-Digit PIN', style: 'cancel' }];
+
+      if (isBiometricSupported) {
+        fallbackButtons.push({
+          text: 'Biometric Unlock',
+          onPress: () => {
+            signInWithBiometrics();
+          },
+        });
+      }
+
+      fallbackButtons.push({
+        text: 'Retry Google',
+        onPress: () => {
+          handleGoogleSignIn();
+        },
+      });
+
+      Alert.alert(
+        'Google Sign-In Unavailable 🌐',
+        outcome.status === 'error'
+          ? `${outcome.message}\n\nYou can unlock immediately using your device Biometrics or 4-digit PIN.`
+          : 'Google browser login did not finish. Unlock anytime with Biometrics or your 4-digit PIN.',
+        fallbackButtons
+      );
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -214,12 +265,19 @@ export const SignInScreen: React.FC = () => {
         {/* Google Sign In & Reset Links */}
         <View style={styles.footerLinks}>
           <TouchableOpacity
-            style={styles.googlePillBtn}
+            style={[styles.googlePillBtn, isGoogleLoading && { opacity: 0.7 }]}
             onPress={handleGoogleSignIn}
+            disabled={isGoogleLoading}
             activeOpacity={0.8}
           >
-            <Ionicons name="logo-google" size={15} color="#EA4335" />
-            <Text style={styles.googlePillText}>Sign in with Google</Text>
+            {isGoogleLoading ? (
+              <ActivityIndicator size="small" color={Colors.textPrimary} />
+            ) : (
+              <Ionicons name="logo-google" size={15} color="#EA4335" />
+            )}
+            <Text style={styles.googlePillText}>
+              {isGoogleLoading ? 'Connecting to Google...' : 'Sign in with Google'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.forgotBtn} onPress={handleReset}>

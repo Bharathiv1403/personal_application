@@ -30,7 +30,11 @@ interface AuthState {
   // Actions
   initializeAuth: () => Promise<void>;
   signUp: (name: string, email: string, pin: string, enableBiometrics: boolean) => Promise<boolean>;
-  signInWithGoogle: (googleUser: { name: string; email: string; photoUrl?: string }, customPin?: string) => Promise<boolean>;
+  signInWithGoogle: (
+    googleUser: { name: string; email: string; photoUrl?: string },
+    customPin?: string,
+    enableBiometrics?: boolean
+  ) => Promise<boolean>;
   updatePin: (newPin: string) => Promise<boolean>;
   signInWithPin: (pin: string) => Promise<boolean>;
   signInWithBiometrics: () => Promise<boolean>;
@@ -136,7 +140,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signInWithGoogle: async (googleUser, customPin) => {
+  signInWithGoogle: async (googleUser, customPin, enableBiometrics) => {
     try {
       const profile: UserProfile = {
         name: googleUser.name,
@@ -149,6 +153,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
       if (customPin && customPin.length >= 4) {
         await SecureStore.setItemAsync(PIN_SECURE_KEY, customPin);
+      }
+
+      const nextBiometricEnabled =
+        typeof enableBiometrics === 'boolean'
+          ? get().isBiometricSupported && enableBiometrics
+          : get().isBiometricEnabled;
+
+      if (typeof enableBiometrics === 'boolean') {
+        await AsyncStorage.setItem(BIOMETRIC_ENABLED_KEY, nextBiometricEnabled ? 'true' : 'false');
       }
 
       // Sync active identity to Career Profile
@@ -165,6 +178,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: profile,
         hasAccount: true,
         isAuthenticated: true,
+        isBiometricEnabled: nextBiometricEnabled,
         hasCompletedOnboarding: storedOnboarding === 'true',
       });
 

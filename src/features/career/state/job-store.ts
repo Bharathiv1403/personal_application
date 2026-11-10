@@ -5,7 +5,29 @@ import * as WebBrowser from 'expo-web-browser';
 import { Linking } from 'react-native';
 import { REAL_CAREER_SEED_JOBS } from '@/core/data/real-career-seed';
 import { JobDiscoveryService, DiscoveredJobItem } from '@/core/utils/job-discovery-service';
+import { normalizeHttpUrl } from '@/core/utils/url';
 import { useCandidateProfileStore } from './candidate-profile-store';
+
+/**
+ * Merges multiple skill lists while removing duplicates case-insensitively.
+ */
+export function mergeCandidateSkills(...skillLists: (string[] | undefined)[]): string[] {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+  for (const list of skillLists) {
+    if (!list) continue;
+    for (const raw of list) {
+      const skill = raw?.trim();
+      if (!skill) continue;
+      const key = skill.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(skill);
+      }
+    }
+  }
+  return merged;
+}
 
 export type JobStage = 'wishlist' | 'applied' | 'assessment' | 'interview' | 'offer' | 'rejected';
 
@@ -150,6 +172,7 @@ export const useJobStore = create<JobState>()(
 
         const newJob: JobApplicationItem = {
           ...jobData,
+          url: normalizeHttpUrl(jobData.url),
           id: `job-${Date.now()}`,
           matchScore,
           missingSkills,
@@ -168,7 +191,7 @@ export const useJobStore = create<JobState>()(
        * 1-Click Apply: Opens the real job URL in browser and moves stage to 'applied'
        */
       applyToJob: async (id: string, url?: string) => {
-        const targetUrl = url || get().jobs.find((j) => j.id === id)?.url;
+        const targetUrl = normalizeHttpUrl(url || get().jobs.find((j) => j.id === id)?.url);
         
         // Mark as applied in local pipeline
         const appliedDate = new Date().toISOString().split('T')[0];
@@ -200,7 +223,7 @@ export const useJobStore = create<JobState>()(
           try {
             await WebBrowser.openBrowserAsync(targetUrl);
           } catch {
-            await Linking.openURL(targetUrl);
+            await Linking.openURL(targetUrl).catch(() => {});
           }
         }
       },
@@ -253,23 +276,32 @@ export const useJobStore = create<JobState>()(
       },
 
       addInterviewRound: (jobId, round) => {
+        const normalizedRound = {
+          ...round,
+          meetLink: normalizeHttpUrl(round.meetLink),
+          id: `int-${Date.now()}`,
+        };
         set((state) => ({
           jobs: state.jobs.map((j) =>
             j.id === jobId
-              ? { ...j, interviews: [...j.interviews, { ...round, id: `int-${Date.now()}` }] }
+              ? { ...j, interviews: [...j.interviews, normalizedRound] }
               : j
           ),
         }));
       },
 
       updateInterviewRound: (jobId, roundId, updates) => {
+        const sanitizedUpdates =
+          'meetLink' in updates
+            ? { ...updates, meetLink: normalizeHttpUrl(updates.meetLink) }
+            : updates;
         set((state) => ({
           jobs: state.jobs.map((j) =>
             j.id === jobId
               ? {
                   ...j,
                   interviews: j.interviews.map((r) =>
-                    r.id === roundId ? { ...r, ...updates } : r
+                    r.id === roundId ? { ...r, ...sanitizedUpdates } : r
                   ),
                 }
               : j
@@ -284,31 +316,29 @@ export const useJobStore = create<JobState>()(
       calculateJdMatch: (jobDescriptionText, customSkills) => {
         const jdLower = jobDescriptionText.toLowerCase();
 
-        // 1. Resolve skills from candidate-profile-store & job-store
+        // 1. Resolve deduplicated skills from candidate-profile-store & job-store
         const profileState = useCandidateProfileStore.getState();
-        const profileSkills = [
-          ...(profileState.skills || []),
-          ...(profileState.skillsList || []).map((s) => s.name),
-        ];
-        const storeSkills = get().myResumeSkills;
+        const combinedProfileSkills = mergeCandidateSkills(
+          profileState.skills,
+          (profileState.skillsList || []).map((s) => s.name),
+          get().myResumeSkills
+        );
 
         const candidateSkills =
           customSkills && customSkills.length > 0
-            ? customSkills
-            : storeSkills.length > 0
-              ? storeSkills
-              : profileSkills.length > 0
-                ? profileSkills
-                : [
-                    'React Native',
-                    'TypeScript',
-                    'JavaScript',
-                    'React',
-                    'Mobile Development',
-                    'REST APIs',
-                    'Git',
-                    'State Management',
-                  ];
+            ? mergeCandidateSkills(customSkills)
+            : combinedProfileSkills.length > 0
+              ? combinedProfileSkills
+              : [
+                  'React Native',
+                  'TypeScript',
+                  'JavaScript',
+                  'React',
+                  'Mobile Development',
+                  'REST APIs',
+                  'Git',
+                  'State Management',
+                ];
 
         const matched: string[] = [];
         const missing: string[] = [];
@@ -409,7 +439,18 @@ export const useJobStore = create<JobState>()(
       },
 
       calculateInHandSalary: (grossAnnualLPA) => {
-        const grossAnnual = grossAnnualLPA * 100000;
+        const safeLPA =
+          Number.isFinite(grossAnnualLPA) && grossAnnualLPA > 0 ? grossAnnualLPA : 0;
+        if (safeLPA === 0) {
+          return {
+            monthlyGross: 0,
+            monthlyEPF: 0,
+            monthlyTax: 0,
+            monthlyInHand: 0,
+          };
+        }
+
+        const grossAnnual = safeLPA * 100000;
         const monthlyGross = Math.round(grossAnnual / 12);
         const monthlyEPF = Math.round(Math.min(3500, monthlyGross * 0.5 * 0.12));
 
@@ -437,7 +478,8 @@ export const useJobStore = create<JobState>()(
         }
 
         const monthlyTax = Math.round(annualTax / 12);
-        const monthlyInHand = Math.max(0, monthlyGross - monthlyEPF - monthlyTax - 200);
+        const monthlyPT = monthlyGross > 200 ? 200 : 0;
+        const monthlyInHand = Math.max(0, monthlyGross - monthlyEPF - monthlyTax - monthlyPT);
 
         return {
           monthlyGross,

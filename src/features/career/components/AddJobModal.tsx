@@ -16,6 +16,7 @@ import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
 import { useJobStore, JobStage } from '../state/job-store';
 import { JobLivenessService, LivenessResult, GhostAnalysisResult } from '@/core/services/job-liveness-service';
+import { normalizeHttpUrl } from '@/core/utils/url';
 
 interface AddJobModalProps {
   visible: boolean;
@@ -53,11 +54,12 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) =>
   const [ghostResult, setGhostResult] = useState<GhostAnalysisResult | null>(null);
 
   const handleVerifyLink = async () => {
-    if (!jobUrl.trim()) return;
+    const normalizedUrl = normalizeHttpUrl(jobUrl);
+    if (!normalizedUrl) return;
     setIsCheckingLiveness(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     try {
-      const liveRes = await JobLivenessService.verifyUrlLiveness(jobUrl);
+      const liveRes = await JobLivenessService.verifyUrlLiveness(normalizedUrl);
       setLivenessResult(liveRes);
       const ghostRes = JobLivenessService.analyzeGhostSignals(role, company, jdText);
       setGhostResult(ghostRes);
@@ -79,7 +81,7 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) =>
       location: location.trim(),
       workMode,
       source: sourcePlatform,
-      url: jobUrl.trim() || undefined,
+      url: normalizeHttpUrl(jobUrl),
       ctcMin: parseFloat(ctcMinText) || 0,
       ctcMax: parseFloat(ctcMaxText) || 0,
       stage,
@@ -90,8 +92,14 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ visible, onClose }) =>
 
     setCompany('');
     setRole('');
+    setLocation('');
     setJobUrl('');
+    setCtcMinText('');
+    setCtcMaxText('');
+    setRecruiterName('');
     setJdText('');
+    setLivenessResult(null);
+    setGhostResult(null);
     onClose();
   };
 

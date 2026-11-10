@@ -80,8 +80,13 @@ export const SetGooglePinModal: React.FC<Props> = ({
                 <Text style={styles.userEmail}>{googleUser.email}</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={onCancel} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color={Colors.textSecondary} />
+            <TouchableOpacity
+              onPress={onCancel}
+              style={styles.closeBtn}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -157,6 +162,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: Radii.xl,
     borderTopRightRadius: Radii.xl,
     padding: Spacing.xl,
+    paddingBottom: Platform.OS === 'android' ? 32 : Spacing.xl,
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
@@ -200,7 +206,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtn: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   infoBox: {
     flexDirection: 'row',

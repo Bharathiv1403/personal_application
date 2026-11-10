@@ -1,3 +1,5 @@
+import { normalizeHttpUrl } from '@/core/utils/url';
+
 export interface LivenessResult {
   isLive: boolean;
   statusText: string;
@@ -17,8 +19,8 @@ export class JobLivenessService {
    * Fast zero-token ATS and HTTP liveness checker adapted from career-ops architecture
    */
   static async verifyUrlLiveness(rawUrl: string): Promise<LivenessResult> {
-    const trimmed = rawUrl.trim();
-    if (!trimmed || !/^https?:\/\//i.test(trimmed)) {
+    const trimmed = normalizeHttpUrl(rawUrl);
+    if (!trimmed) {
       return {
         isLive: false,
         statusText: 'Invalid URL format',

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/core/design-system/tokens/colors';
@@ -24,9 +25,22 @@ export const InHandSalaryModal: React.FC<InHandSalaryModalProps> = ({ visible, o
   const calculateInHandSalary = useJobStore((s) => s.calculateInHandSalary);
 
   const [ctcText, setCtcText] = useState('24'); // 24 LPA
-  const ctcLpa = parseFloat(ctcText) || 0;
+
+  const handleCtcChange = (raw: string) => {
+    const cleaned = raw.replace(/[^0-9.]/g, '');
+    const firstDotIdx = cleaned.indexOf('.');
+    const normalized =
+      firstDotIdx === -1
+        ? cleaned
+        : `${cleaned.slice(0, firstDotIdx + 1)}${cleaned.slice(firstDotIdx + 1).replace(/\./g, '')}`;
+    setCtcText(normalized);
+  };
+
+  const parsed = parseFloat(ctcText);
+  const ctcLpa = Math.max(0, Number.isFinite(parsed) ? Math.min(parsed, 10000) : 0);
 
   const { monthlyGross, monthlyEPF, monthlyTax, monthlyInHand } = calculateInHandSalary(ctcLpa);
+  const monthlyPT = monthlyGross > 200 ? 200 : 0;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -35,70 +49,78 @@ export const InHandSalaryModal: React.FC<InHandSalaryModalProps> = ({ visible, o
         style={styles.modalOverlay}
       >
         <View style={styles.sheetContainer}>
-          {/* Header */}
-          <View style={styles.sheetHeader}>
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <Text style={styles.sheetTitle} numberOfLines={1}>
-                In-Hand CTC Salary Calculator
-              </Text>
-              <Text style={styles.sheetSub} numberOfLines={1}>
-                Indian New Tax Regime & Monthly Bank Credit
-              </Text>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollContent}
+          >
+            {/* Header */}
+            <View style={styles.sheetHeader}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.sheetTitle} numberOfLines={1}>
+                  In-Hand CTC Salary Calculator
+                </Text>
+                <Text style={styles.sheetSub} numberOfLines={1}>
+                  Indian New Tax Regime & Monthly Bank Credit
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.closeBtn}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={20} color={Colors.textPrimary} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              onPress={onClose}
-              style={styles.closeBtn}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="close" size={20} color={Colors.textPrimary} />
+
+            {/* Input */}
+            <View style={styles.formGroup}>
+              <Text style={styles.inputLabel}>Annual CTC Package (in LPA)</Text>
+              <View style={styles.inputWrap}>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="decimal-pad"
+                  placeholder="0"
+                  placeholderTextColor={Colors.textMuted}
+                  value={ctcText}
+                  onChangeText={handleCtcChange}
+                />
+                <Text style={styles.lpaSuffix}>LPA</Text>
+              </View>
+            </View>
+
+            {/* Monthly In-Hand Highlight Card */}
+            <View style={styles.highlightCard}>
+              <Text style={styles.hlTitle}>Net Monthly In-Hand (Bank Credit)</Text>
+              <Text style={styles.hlAmount}>{formatINR(monthlyInHand)}</Text>
+              <Text style={styles.hlSub}>Credited on 1st of every month</Text>
+            </View>
+
+            {/* Detailed Monthly Deduction Breakdown */}
+            <View style={styles.breakdownBox}>
+              <View style={styles.bdRow}>
+                <Text style={styles.bdLabel}>Gross Monthly Earnings</Text>
+                <Text style={styles.bdValue}>{formatINR(monthlyGross)}</Text>
+              </View>
+              <View style={styles.bdRow}>
+                <Text style={styles.bdLabel}>- Employee PF (12% of Basic)</Text>
+                <Text style={styles.bdMinus}>- {formatINR(monthlyEPF)}</Text>
+              </View>
+              <View style={styles.bdRow}>
+                <Text style={styles.bdLabel}>- Income Tax (New Regime)</Text>
+                <Text style={styles.bdMinus}>- {formatINR(monthlyTax)}</Text>
+              </View>
+              <View style={styles.bdRow}>
+                <Text style={styles.bdLabel}>- Professional Tax (PT)</Text>
+                <Text style={styles.bdMinus}>- {formatINR(monthlyPT)}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.doneBtn} onPress={onClose}>
+              <Text style={styles.doneBtnText}>Close Calculator</Text>
             </TouchableOpacity>
-          </View>
-
-          {/* Input */}
-          <View style={styles.formGroup}>
-            <Text style={styles.inputLabel}>Annual CTC Package (in LPA)</Text>
-            <View style={styles.inputWrap}>
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                value={ctcText}
-                onChangeText={setCtcText}
-              />
-              <Text style={styles.lpaSuffix}>LPA</Text>
-            </View>
-          </View>
-
-          {/* Monthly In-Hand Highlight Card */}
-          <View style={styles.highlightCard}>
-            <Text style={styles.hlTitle}>Net Monthly In-Hand (Bank Credit)</Text>
-            <Text style={styles.hlAmount}>{formatINR(monthlyInHand)}</Text>
-            <Text style={styles.hlSub}>Credited on 1st of every month</Text>
-          </View>
-
-          {/* Detailed Monthly Deduction Breakdown */}
-          <View style={styles.breakdownBox}>
-            <View style={styles.bdRow}>
-              <Text style={styles.bdLabel}>Gross Monthly Earnings</Text>
-              <Text style={styles.bdValue}>{formatINR(monthlyGross)}</Text>
-            </View>
-            <View style={styles.bdRow}>
-              <Text style={styles.bdLabel}>- Employee PF (12% of Basic)</Text>
-              <Text style={styles.bdMinus}>- {formatINR(monthlyEPF)}</Text>
-            </View>
-            <View style={styles.bdRow}>
-              <Text style={styles.bdLabel}>- Income Tax (New Regime)</Text>
-              <Text style={styles.bdMinus}>- {formatINR(monthlyTax)}</Text>
-            </View>
-            <View style={styles.bdRow}>
-              <Text style={styles.bdLabel}>- Professional Tax (PT)</Text>
-              <Text style={styles.bdMinus}>- ₹200</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity style={styles.doneBtn} onPress={onClose}>
-            <Text style={styles.doneBtnText}>Close Calculator</Text>
-          </TouchableOpacity>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -116,8 +138,13 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: Radii.xl,
     borderTopRightRadius: Radii.xl,
     padding: Spacing.xl,
+    paddingBottom: Platform.OS === 'android' ? 28 : Spacing.xl,
+    maxHeight: '90%',
     borderWidth: 1,
     borderColor: Colors.borderLight,
+  },
+  scrollContent: {
+    paddingBottom: Spacing.sm,
   },
   sheetHeader: {
     flexDirection: 'row',

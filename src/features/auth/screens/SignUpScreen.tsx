@@ -11,6 +11,7 @@ import {
   Alert,
   Switch,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -21,6 +22,7 @@ import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
 import { useAuthStore } from '../state/auth-store';
 import { GoogleAuthService, GoogleUserProfile } from '@/core/utils/google-auth';
 import { SetGooglePinModal } from '../components/SetGooglePinModal';
+import { GoogleQuickConnectModal } from '../components/GoogleQuickConnectModal';
 import { TermsPrivacyModal } from '../components/TermsPrivacyModal';
 import { RestoreBackupModal } from '@/features/wealth/components/RestoreBackupModal';
 
@@ -33,8 +35,11 @@ export const SignUpScreen: React.FC = () => {
   const [showConfirmPin, setShowConfirmPin] = useState(false);
   const [enableBiometrics, setEnableBiometrics] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const [pendingGoogleUser, setPendingGoogleUser] = useState<GoogleUserProfile | null>(null);
+  const [quickConnectVisible, setQuickConnectVisible] = useState(false);
+  const [googleErrorMessage, setGoogleErrorMessage] = useState<string | undefined>(undefined);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [restoreModalVisible, setRestoreModalVisible] = useState(false);
 
@@ -43,17 +48,33 @@ export const SignUpScreen: React.FC = () => {
   const isBiometricSupported = useAuthStore((s) => s.isBiometricSupported);
 
   const handleGoogleSignIn = async () => {
+    if (isGoogleLoading) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    const googleUser = await GoogleAuthService.promptGoogleSignIn();
-    if (googleUser) {
-      // Prompt user to set their custom 4-digit PIN for offline vault security
-      setPendingGoogleUser(googleUser);
+    const wasModalOpen = quickConnectVisible;
+    setIsGoogleLoading(true);
+    setQuickConnectVisible(false);
+
+    if (wasModalOpen) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    try {
+      const outcome = await GoogleAuthService.signInWithGoogle();
+      if (outcome.status === 'success') {
+        setGoogleErrorMessage(undefined);
+        setPendingGoogleUser(outcome.user);
+      } else {
+        setGoogleErrorMessage(outcome.status === 'error' ? outcome.message : undefined);
+        setQuickConnectVisible(true);
+      }
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
   const handleConfirmGooglePin = async (chosenPin: string) => {
     if (!pendingGoogleUser) return;
-    const success = await signInWithGoogle(pendingGoogleUser, chosenPin);
+    const success = await signInWithGoogle(pendingGoogleUser, chosenPin, enableBiometrics);
     setPendingGoogleUser(null);
     if (success) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -250,12 +271,19 @@ export const SignUpScreen: React.FC = () => {
 
             {/* Google Sign-In Button */}
             <TouchableOpacity
-              style={styles.googleBtn}
+              style={[styles.googleBtn, isGoogleLoading && { opacity: 0.7 }]}
               onPress={handleGoogleSignIn}
+              disabled={isGoogleLoading}
               activeOpacity={0.8}
             >
-              <Ionicons name="logo-google" size={18} color="#EA4335" />
-              <Text style={styles.googleBtnText}>Continue with Google</Text>
+              {isGoogleLoading ? (
+                <ActivityIndicator size="small" color={Colors.textPrimary} />
+              ) : (
+                <Ionicons name="logo-google" size={18} color="#EA4335" />
+              )}
+              <Text style={styles.googleBtnText}>
+                {isGoogleLoading ? 'Connecting to Google...' : 'Continue with Google'}
+              </Text>
             </TouchableOpacity>
 
             {/* Restore Backup Link */}
@@ -284,6 +312,19 @@ export const SignUpScreen: React.FC = () => {
           googleUser={pendingGoogleUser}
           onCancel={() => setPendingGoogleUser(null)}
           onConfirmPin={handleConfirmGooglePin}
+        />
+
+        <GoogleQuickConnectModal
+          visible={quickConnectVisible}
+          errorMessage={googleErrorMessage}
+          initialName={name}
+          initialEmail={email}
+          onClose={() => setQuickConnectVisible(false)}
+          onRetryGoogle={handleGoogleSignIn}
+          onContinueWithAccount={(localUser) => {
+            setQuickConnectVisible(false);
+            setPendingGoogleUser(localUser);
+          }}
         />
 
         <TermsPrivacyModal

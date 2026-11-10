@@ -18,6 +18,7 @@ import { Colors } from '@/core/design-system/tokens/colors';
 import { Spacing, Radii } from '@/core/design-system/tokens/spacing';
 import { Badge } from '@/core/design-system/primitives/Badge';
 import { useJobStore, JobApplicationItem, JobStage, InterviewRoundItem, getJobPlatformSource } from '../state/job-store';
+import { normalizeHttpUrl } from '@/core/utils/url';
 
 interface Props {
   visible: boolean;
@@ -82,7 +83,7 @@ export const JobDetailModal: React.FC<Props> = ({
     addInterviewRound(job.id, {
       roundName: roundName.trim(),
       scheduledAt,
-      meetLink: meetLink.trim() || undefined,
+      meetLink: normalizeHttpUrl(meetLink),
       interviewer: interviewer.trim() || undefined,
       notes: notes.trim() || undefined,
     });
@@ -103,8 +104,11 @@ export const JobDetailModal: React.FC<Props> = ({
   };
 
   const handleOpenMeetLink = (url?: string) => {
-    if (!url) return;
-    const formattedUrl = url.startsWith('http') ? url : `https://${url}`;
+    const formattedUrl = normalizeHttpUrl(url);
+    if (!formattedUrl) {
+      if (url) Alert.alert('Invalid Link', 'Please enter a valid meeting URL.');
+      return;
+    }
     Linking.openURL(formattedUrl).catch(() => {
       Alert.alert('Invalid Link', 'Could not open meeting link.');
     });
@@ -175,8 +179,13 @@ export const JobDetailModal: React.FC<Props> = ({
               </View>
               <Text style={styles.roleTitle}>{job.role}</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color={Colors.textSecondary} />
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeBtn}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -537,9 +546,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtn: {
-    padding: 6,
-    borderRadius: Radii.full,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollBody: {
     paddingHorizontal: Spacing.lg,
